@@ -2,9 +2,14 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/na';
+// import { redirect } from 'next/navigation';
+
 import React, { useState, FormEvent } from 'react';
 
 const AdminLoginForm = () => {
+   const router = useRouter();
    const [email, setEmail] = useState('');
    const [password, setPassword] = useState('');
    const [remember, setRemember] = useState(false);
@@ -30,6 +35,12 @@ const AdminLoginForm = () => {
             setErrorString(responseData.error);
             throw new Error('Network response was not ok');
          }
+         if (response.ok) {
+            console.log("responseData", responseData)
+            router.push("/admin")
+            // redirect("/admin");
+         }
+
 
          const cookieRes = await fetch('http://localhost:3000/api/cookie_management', {
             method: 'POST',
@@ -39,6 +50,7 @@ const AdminLoginForm = () => {
             body: JSON.stringify({ restaurant_id: responseData.identity_code }),
          });
          // if (!responseData.success)
+
          console.log('login success'); // Handle the response data as needed
       } catch (error) {
          console.error('There was a problem with the fetch operation:', error);

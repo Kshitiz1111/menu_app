@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminAuth } from "./lib/auth";
 
 export async function middleware(request: NextRequest){
+   console.log("request",request.headers)
    const adminTkn:string | undefined = request.cookies.get('admin_auth_tkn')?.value;
-   // console.log("middelware ran: ",adminTkn)
+   console.log("middelware ran: ",adminTkn)
    const verifiedAdminTkn = adminTkn && 
    (await verifyAdminAuth(adminTkn).catch((err:any)=>{
       console.log(err);

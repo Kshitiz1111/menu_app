@@ -44,6 +44,7 @@ export const khaltiPay = async(payload:PaymentPayload)=>{
 export const paymentVerificationLookup = async(paymentId:string)=>{
    try {
       let response = await fetch("https://a.khalti.com/api/v2/epayment/lookup/", {
+      // let response = await fetch("https://a.khalti.com/api/v2/epayment/lookup/", {
          method: "POST",
          headers: {
             "Authorization": `key faec6057a16449a6ae2866e07b2935f6`,
@@ -53,6 +54,7 @@ export const paymentVerificationLookup = async(paymentId:string)=>{
       })
        // Handle the response data as needed
        return response;
+        
 
    } catch (error: any) {
       console.log("error in khalti lookup", error)

@@ -3,13 +3,16 @@
 import { db } from '@vercel/postgres';
 import { z } from "zod";
 import { ProductFormSchema } from "../validator";
+import { connectClientLocally } from '../database/localdb';
 // import { PoolClient } from "pg";
 
 export const createProduct = async (
   productData: z.infer<typeof ProductFormSchema>
-  
+
 ) => {
-  let client = await db.connect();
+  // let client = await db.connect();
+  let client = await connectClientLocally();
+
 
   const {
     product_category,
@@ -28,8 +31,8 @@ export const createProduct = async (
   let pCategoryId;
   let pTypeId;
   let pDietTypeId;
-  let baseIngIds:Array<number>=[];
-  let customIngIds:Array<number>=[];
+  let baseIngIds: Array<number> = [];
+  let customIngIds: Array<number> = [];
   let comboDrinkId;
   let comboDessertId;
 
@@ -48,69 +51,69 @@ export const createProduct = async (
     );
     if (base_ingredient) {
       let result = await createBaseIngredient(base_ingredient, client);
-      let {ids} = result
-      if(ids) baseIngIds = ids;
+      let { ids } = result
+      if (ids) baseIngIds = ids;
     }
     if (custom_ingredient) {
       let result = await createCustomIngredient(custom_ingredient, client);
-      let {ids} = result
-      if(ids) customIngIds = ids;
+      let { ids } = result
+      if (ids) customIngIds = ids;
     }
-  
-    if(product_type && product_category !== "combo"){
+
+    if (product_type && product_category !== "combo") {
       let result = await postProduct(
         {
-          name:product_name,
-          img:product_img,
-          description:product_des,
-          price:product_price,
-          pCategoryId:pCategoryId.id,
-          pTypeId:pTypeId.id,
-          pDietTypeId:pDietTypeId.id,
-          baseIngIds:baseIngIds,
-          customIngIds:customIngIds,
-          comboDrinkId:comboDrinkId,
+          name: product_name,
+          img: product_img,
+          description: product_des,
+          price: product_price,
+          pCategoryId: pCategoryId.id,
+          pTypeId: pTypeId.id,
+          pDietTypeId: pDietTypeId.id,
+          baseIngIds: baseIngIds,
+          customIngIds: customIngIds,
+          comboDrinkId: comboDrinkId,
           comboDessertId: comboDessertId
-        }, 
+        },
         client
       );
-      console.log("product result",result)
+      console.log("product result", result)
     }
 
-    if(product_type && product_category === "combo"){
+    if (product_type && product_category === "combo") {
 
-      if (combo_drinks && combo_drinks?.length >0) {
+      if (combo_drinks && combo_drinks?.length > 0) {
         let result = await createComboDrinks(productData, client);
-        let {id} = result
-        if(id) comboDrinkId = id;
+        let { id } = result
+        if (id) comboDrinkId = id;
         console.log("comboDrinkid", result)
       }
-      if (combo_desserts && combo_desserts?.length >0) {
+      if (combo_desserts && combo_desserts?.length > 0) {
         let result = await createComboDessert(productData, client);
-        let {id} = result
-        if(id) comboDessertId = id;
+        let { id } = result
+        if (id) comboDessertId = id;
         console.log("comboDessertid", result)
       }
-      
+
       let result = await postProduct(
         {
-          name:product_name,
-          img:product_img,
-          description:product_des,
-          price:product_price,
-          pCategoryId:pCategoryId.id,
-          pTypeId:pTypeId.id,
-          pDietTypeId:pDietTypeId.id,
-          baseIngIds:baseIngIds,
-          customIngIds:customIngIds,
-          comboDrinkId:comboDrinkId,
+          name: product_name,
+          img: product_img,
+          description: product_des,
+          price: product_price,
+          pCategoryId: pCategoryId.id,
+          pTypeId: pTypeId.id,
+          pDietTypeId: pDietTypeId.id,
+          baseIngIds: baseIngIds,
+          customIngIds: customIngIds,
+          comboDrinkId: comboDrinkId,
           comboDessertId: comboDessertId
-        }, 
+        },
         client
       );
-      console.log("combo product result",result)
+      console.log("combo product result", result)
     }
-   
+
 
     // console.log(pCategoryId, pTypeId, pDietTypeId, "baseIngIds: ",baseIngIds);
     return "success";
@@ -126,7 +129,7 @@ type categoryType = {
   name: string;
   tableName: string;
 };
-const createCategory = async (category: categoryType, client:any) => {
+const createCategory = async (category: categoryType, client: any) => {
   // Start a transaction
   await client.query("BEGIN");
 
@@ -189,11 +192,11 @@ const createCategory = async (category: categoryType, client:any) => {
 
 
 type baseIngType = {
-  ing_id?: number|string;
+  ing_id?: number | string;
   ing_name: string;
   ing_qty: string | number;
   ing_unit: string;
-  custom_marker?: boolean | string |  undefined;
+  custom_marker?: boolean | string | undefined;
 };
 const createBaseIngredient = async (
   baseIng: baseIngType[],
@@ -228,7 +231,7 @@ const createBaseIngredient = async (
     let insertValues: any[] = [];
 
     // array for existing ids 
-    let existIngArrIds:Array<number>=[];
+    let existIngArrIds: Array<number> = [];
 
     //remove last element because it is empty
     baseIng.pop();
@@ -247,7 +250,7 @@ const createBaseIngredient = async (
       );
 
       //collect existed ingredient id into an array
-      exists.rows.forEach((row:any) => {
+      exists.rows.forEach((row: any) => {
         existIngArrIds.push(row.id)
       });
 
@@ -268,16 +271,16 @@ const createBaseIngredient = async (
     // If there are ingredients to insert, execute the insert query
     if (insertQueries.length > 0) {
       let queryString = `INSERT INTO base_ingredient (name, qty, unit, is_custom) VALUES ${insertQueries.join(",")} RETURNING id;`;
-      console.log('queryString',queryString);
+      console.log('queryString', queryString);
       const result = await client.query(queryString, insertValues);
-      
+
       // Assuming you want to return the IDs of the inserted ingredients
       await client.query("COMMIT");
-      let insertedIngIds = result.rows.map((row:any) => row.id);
+      let insertedIngIds = result.rows.map((row: any) => row.id);
       return {
         success: true,
         message: "Base ingredients successfully created.",
-        ids: [...insertedIngIds,...existIngArrIds],
+        ids: [...insertedIngIds, ...existIngArrIds],
       };
     } else {
       // If no ingredients were inserted, return a message indicating this
@@ -287,12 +290,12 @@ const createBaseIngredient = async (
         ids: existIngArrIds,
       };
     }
-    
+
   } catch (error: any) {
     // Rollback the transaction in case of error
     await client.query("ROLLBACK");
     console.log(error)
-    return { success: false, message: "baseIng error: "+error.message };
+    return { success: false, message: "baseIng error: " + error.message };
   }
 };
 
@@ -336,11 +339,11 @@ const createCustomIngredient = async (
     let insertValues: any[] = [];
 
     // array for existing ids 
-    let existIngArrIds:Array<number>=[];
+    let existIngArrIds: Array<number> = [];
 
     //remove last element because it is empty
     customIng.pop();
-    
+
     // Iterate over each base ingredient
     for (const ingredient of customIng) {
       // Check if the ingredient already exists
@@ -355,7 +358,7 @@ const createCustomIngredient = async (
       );
 
       //collect existed ingredient id into an array
-      exists.rows.forEach((row:any) => {
+      exists.rows.forEach((row: any) => {
         existIngArrIds.push(row.id)
       });
 
@@ -378,15 +381,15 @@ const createCustomIngredient = async (
       let queryString = `INSERT INTO custom_ingredient (name, qty, unit, price) VALUES ${insertQueries.join(",")} RETURNING id;`;
       // console.log('queryString',queryString);
       const result = await client.query(queryString, insertValues);
-      
+
       // Assuming you want to return the IDs of the inserted ingredients
       await client.query("COMMIT");
-      let insertedIngIds = result.rows.map((row:any) => row.id);
+      let insertedIngIds = result.rows.map((row: any) => row.id);
 
       return {
         success: true,
         message: "Custom ingredients successfully created.",
-        ids: [...insertedIngIds,...existIngArrIds],
+        ids: [...insertedIngIds, ...existIngArrIds],
       };
     } else {
       // If no ingredients were inserted, return a message indicating this
@@ -396,28 +399,28 @@ const createCustomIngredient = async (
         ids: existIngArrIds,
       };
     }
-    
+
   } catch (error: any) {
     // Rollback the transaction in case of error
     await client.query("ROLLBACK");
     console.log(error)
-    return { success: false, message: "custom ingredient error: "+error.message };
+    return { success: false, message: "custom ingredient error: " + error.message };
   }
 };
 
 
-const createComboDessert = async(
+const createComboDessert = async (
   productData: z.infer<typeof ProductFormSchema>,
   client: any
-)=>{
+) => {
 
-  const{ product_name, product_des, combo_desserts} = productData;
+  const { product_name, product_des, combo_desserts } = productData;
 
   // Start a transaction
   await client.query("BEGIN");
 
   try {
-     // Check if the table exists and create it if not
+    // Check if the table exists and create it if not
     await client.query(`
       DO $$
       BEGIN
@@ -434,12 +437,12 @@ const createComboDessert = async(
               );
           END IF;
       END $$;
-    `);  
+    `);
 
     // Calculate the total price for the combo dessert
     let totalPrice = 0;
     combo_desserts?.forEach(dessert => {
-      console.log("selected combo desserts: ",dessert)
+      console.log("selected combo desserts: ", dessert)
       totalPrice += dessert.total_qty * Number(dessert.price);
     });
 
@@ -455,7 +458,7 @@ const createComboDessert = async(
     // Assuming client is an instance of PoolClient
     const ComboDessertResult = await client.query(insertQuery, [product_name, product_des, price])
 
-    if(ComboDessertResult.rowCount! > 0){
+    if (ComboDessertResult.rowCount! > 0) {
       await client.query(`
         DO $$
         BEGIN
@@ -474,58 +477,58 @@ const createComboDessert = async(
                 );
             END IF;
         END $$;
-      `); 
+      `);
 
       const comboDessertId = ComboDessertResult.rows[0].id;
 
       // Iterate over the combo_dessert array
-      if(combo_desserts){
+      if (combo_desserts) {
         for (const dessert of combo_desserts) {
           // Extract the dessert_id and quantity from each item in the combo_desserts array
           const dessertId = dessert.id;
           const quantity = dessert.total_qty;
-        
+
           // Construct the INSERT query for the combo_dessert_details table
           const insertQueryDetails = `
             INSERT INTO combo_dessert_details (combo_dessert_id, dessert_id, quantity)
             VALUES ($1, $2, $3)
             RETURNING id;
           `;
-        
+
           // Execute the INSERT query                                               
           const resultDetails = await client.query(insertQueryDetails, [comboDessertId, dessertId, quantity]);
-        
+
           // Log the ID of the newly inserted row in the combo_dessert_details table
           console.log("Inserted combo dessert detail with ID:", resultDetails.rows[0].id);
         }
       }
-    }  
-    
+    }
+
     // Return the ID of the newly inserted Combo dessert
     await client.query("COMMIT");
     return { success: true, message: "combo dessert successfully added.", id: ComboDessertResult.rows[0].id };
-  } catch (error:any) {
+  } catch (error: any) {
     // Rollback the transaction in case of error
     await client.query("ROLLBACK");
     console.log(error)
-    return { success: false, message: "combo desserts error: "+error.message };
+    return { success: false, message: "combo desserts error: " + error.message };
   }
 
 }
 
 
-const createComboDrinks = async(
-    productData: z.infer<typeof ProductFormSchema>,
-    client:any
-)=>{
+const createComboDrinks = async (
+  productData: z.infer<typeof ProductFormSchema>,
+  client: any
+) => {
 
-  const{ product_name, product_des, combo_drinks} = productData;
+  const { product_name, product_des, combo_drinks } = productData;
 
   // Start a transaction
   await client.query("BEGIN");
 
   try {
-     // Check if the table exists and create it if not
+    // Check if the table exists and create it if not
     await client.query(`
       DO $$
       BEGIN
@@ -542,12 +545,12 @@ const createComboDrinks = async(
               );
           END IF;
       END $$;
-    `);  
+    `);
 
     // Calculate the total price for the combo drink
     let totalPrice = 0;
     combo_drinks?.forEach(drink => {
-      console.log("selected combo drinks: ",drink)
+      console.log("selected combo drinks: ", drink)
       totalPrice += drink.total_qty * Number(drink.price);
     });
 
@@ -563,7 +566,7 @@ const createComboDrinks = async(
     // Assuming client is an instance of PoolClient
     const ComboDrinkResult = await client.query(insertQuery, [product_name, product_des, price])
 
-    if(ComboDrinkResult.rowCount! > 0){
+    if (ComboDrinkResult.rowCount! > 0) {
       await client.query(`
         DO $$
         BEGIN
@@ -582,69 +585,69 @@ const createComboDrinks = async(
                 );
             END IF;
         END $$;
-      `); 
+      `);
 
       const comboDrinkId = ComboDrinkResult.rows[0].id;
 
       // Iterate over the combo_drinks array
-      if(combo_drinks){
+      if (combo_drinks) {
         for (const drink of combo_drinks) {
           // Extract the drink_id and quantity from each item in the combo_drinks array
           const drinkId = drink.id;
           const quantity = drink.total_qty;
-        
+
           // Construct the INSERT query for the combo_drink_details table
           const insertQueryDetails = `
             INSERT INTO combo_drink_details (combo_drink_id, drink_id, quantity)
             VALUES ($1, $2, $3)
             RETURNING id;
           `;
-        
+
           // Execute the INSERT query                                               
           const resultDetails = await client.query(insertQueryDetails, [comboDrinkId, drinkId, quantity]);
-        
+
           // Log the ID of the newly inserted row in the combo_drink_details table
           console.log("Inserted combo drink detail with ID:", resultDetails.rows[0].id);
         }
       }
-    }  
-    
+    }
+
     // Return the ID of the newly inserted Combo drink
     await client.query("COMMIT");
     return { success: true, message: "combo drinks successfully added.", id: ComboDrinkResult.rows[0].id };
-  } catch (error:any) {
+  } catch (error: any) {
     // Rollback the transaction in case of error
     await client.query("ROLLBACK");
     console.log(error)
-    return { success: false, message: "combo drinks error: "+error.message };
+    return { success: false, message: "combo drinks error: " + error.message };
   }
 
 }
 
 
-const postProduct = async(
-  {name,img,description,price, pCategoryId, pTypeId, pDietTypeId, baseIngIds, customIngIds, comboDrinkId, comboDessertId}
-  :{
-    name:string,
-    img:string|undefined,
-    description:string,
-    price:string|number, 
-    pCategoryId:number, 
-    pTypeId:number, 
-    pDietTypeId:number, 
-    baseIngIds:number[],
-    customIngIds:number[],
-    comboDrinkId?:number,
-    comboDessertId?:number
-  }
+const postProduct = async (
+  { name, img, description, price, pCategoryId, pTypeId, pDietTypeId, baseIngIds, customIngIds, comboDrinkId, comboDessertId }
+    : {
+      name: string,
+      img: string | undefined,
+      description: string,
+      price: string | number,
+      pCategoryId: number,
+      pTypeId: number,
+      pDietTypeId: number,
+      baseIngIds: number[],
+      customIngIds: number[],
+      comboDrinkId?: number,
+      comboDessertId?: number
+    }
   ,
-  client: any)=>{
+  client: any) => {
   // Start a transaction
-  
+
   await client.query("BEGIN");
   try {
-      // Check if the table exists and create it if not
-      await client.query(`
+    // Check if the table exists and create it if not
+    await client.query(`
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -673,21 +676,21 @@ const postProduct = async(
         END $$;
       `);
 
-      const insertQuery = `
+    const insertQuery = `
         INSERT INTO products (name, img, description, price, category_id, type_id, dietType_id, baseIng_ids, customIng_ids, combo_drinks_id, combo_dessert_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING id;
       `;
-      const values:any = [name, img, description, price, pCategoryId, pTypeId, pDietTypeId, baseIngIds??null, customIngIds??null, comboDrinkId??null, comboDessertId??null];
-      const result = await client.query(insertQuery, values);
+    const values: any = [name, img, description, price, pCategoryId, pTypeId, pDietTypeId, baseIngIds ?? null, customIngIds ?? null, comboDrinkId ?? null, comboDessertId ?? null];
+    const result = await client.query(insertQuery, values);
 
-      // Commit the transaction
-      await client.query("COMMIT");
-      
-      // Return the ID of the newly inserted products
-      return { success: true, message: "products successfully created.", id: result.rows[0].id };
-    
-  } catch (error:any) {
+    // Commit the transaction
+    await client.query("COMMIT");
+
+    // Return the ID of the newly inserted products
+    return { success: true, message: "products successfully created.", id: result.rows[0].id };
+
+  } catch (error: any) {
     // Rollback the transaction in case of error
     await client.query("ROLLBACK");
 
@@ -699,8 +702,8 @@ const postProduct = async(
 }
 
 
-export const getSingleProduct = async(product:any)=>{
- try {
+export const getSingleProduct = async (product: any) => {
+  try {
 
     let baseIngs;
     let customIngs;
@@ -708,7 +711,7 @@ export const getSingleProduct = async(product:any)=>{
     let comboDesserts;
     // Create an array of promises
     const promises = [];
-     // Add promises to the array if the conditions are met
+    // Add promises to the array if the conditions are met
     if (product.baseing_ids && product.baseing_ids.length > 0) {
       promises.push(getBaseIngredientByIds(product.baseing_ids).then(result => baseIngs = result.ingredients));
     }
@@ -724,52 +727,54 @@ export const getSingleProduct = async(product:any)=>{
 
     // Wait for all promises to resolve
     await Promise.all(promises);
-     // For example, logging the results:
-      console.log("product",product);
-      console.log("Base Ingredients:", baseIngs);
-      console.log("Custom Ingredients:", customIngs);
-      console.log("Combo Drinks:", comboDrinks);
-      console.log("Combo Desserts:", comboDesserts);
+    // For example, logging the results:
+    console.log("product", product);
+    console.log("Base Ingredients:", baseIngs);
+    console.log("Custom Ingredients:", customIngs);
+    console.log("Combo Drinks:", comboDrinks);
+    console.log("Combo Desserts:", comboDesserts);
 
-      
+
     return {
       success: true,
       message: "Product successfully fetched.",
       product: {
-        product_id:product.product_id,
-        product_name:product.product_name,
-        product_des:product.product_des,
-        product_img:product.product_img,
-        product_price:product.product_price,
-        product_category:product.product_category,
-        product_type:product.product_type,
-        diet_type:product.diet_type,
-        base_ingredient:baseIngs,
-        custom_ingredient:customIngs,
-        combo_drinks:comboDrinks,
-        combo_desserts:comboDesserts,
+        product_id: product.product_id,
+        product_name: product.product_name,
+        product_des: product.product_des,
+        product_img: product.product_img,
+        product_price: product.product_price,
+        product_category: product.product_category,
+        product_type: product.product_type,
+        diet_type: product.diet_type,
+        base_ingredient: baseIngs,
+        custom_ingredient: customIngs,
+        combo_drinks: comboDrinks,
+        combo_desserts: comboDesserts,
       }, // Assuming each row represents a product
     };
 
- } catch (error: any) {
+  } catch (error: any) {
     // Log the error and return an error message
     console.error("Error fetching product:", error);
     return {
       success: false,
       message: "Error fetching product: " + error.message,
     };
- }
+  }
 }
 
 export const getAllProduct = async () => {
-  let client = await db.connect();
-  // Start a transaction
- await client.query("BEGIN");
+  // let client = await db.connect();
+  let client = await connectClientLocally();
 
- try {
+  // Start a transaction
+  await client.query("BEGIN");
+
+  try {
     // Execute the SELECT query to fetch all products
     const result = await client.query(
-        `SELECT 
+      `SELECT 
         p.*,
         pc.name AS product_category,
         pt.name AS product_type,
@@ -784,17 +789,17 @@ export const getAllProduct = async () => {
         product_diet_type pdt ON p.diettype_id = pdt.id`
     );
     // console.log(result.rows)
-    let transformedResult = result.rows.map((row)=>(
+    let transformedResult = result.rows.map((row) => (
       {
-        product_id:row.id,
-        product_name:row.name,
-        product_des:row.description,
-        product_img:row.img,
-        product_category:row.product_category,
-        product_type:row.product_type,
-        diet_type:row.diet_type,
-        product_price:row.price,
-        baseing_ids:row.baseing_ids,
+        product_id: row.id,
+        product_name: row.name,
+        product_des: row.description,
+        product_img: row.img,
+        product_category: row.product_category,
+        product_type: row.product_type,
+        diet_type: row.diet_type,
+        product_price: row.price,
+        baseing_ids: row.baseing_ids,
         customing_ids: row.customing_ids,
         combo_drinks_id: row.combo_drinks_id,
         combo_dessert_id: row.combo_dessert_id,
@@ -810,7 +815,7 @@ export const getAllProduct = async () => {
       products: transformedResult, // Assuming each row represents a product
     };
 
- } catch (error: any) {
+  } catch (error: any) {
     // Rollback the transaction in case of error
     await client.query("ROLLBACK");
 
@@ -821,14 +826,16 @@ export const getAllProduct = async () => {
       success: false,
       message: "Error fetching products: " + error.message,
     };
- }
+  }
 };
 
 
 
 
-export const getAllDrinks = async()=>{
-  let client = await db.connect();
+export const getAllDrinks = async () => {
+  // let client = await db.connect();
+  let client = await connectClientLocally();
+
   try {
     // SQL query to fetch drinks along with their base ingredients aggregated into a JSON array
     const query = `
@@ -846,10 +853,10 @@ export const getAllDrinks = async()=>{
     const result = await client.query(query);
 
     // The result now includes a JSON array of base ingredients for each drink
-    const drinks:any =  result.rows.map((row,index) =>{
+    const drinks: any = result.rows.map((row, index) => {
       let baseIngParsed = JSON.parse(row.base_ingredient);
       // Map over baseIngParsed to construct the base_ingredient array
-      const baseIngredients = baseIngParsed.map((ing:any) => ({
+      const baseIngredients = baseIngParsed.map((ing: any) => ({
         ing_id: ing.id,
         ing_name: ing.name,
         ing_qty: ing.qty,
@@ -857,18 +864,18 @@ export const getAllDrinks = async()=>{
         custom_marker: ing.is_custom,
       }));
       console.log(baseIngParsed)
-      return({
+      return ({
         id: row.id,
         name: row.name,
         img_src: row.img,
         price: row.price,
         product_type: row.product_type,
         description: row.description,
-        base_ingredient:baseIngParsed.length>0?baseIngredients:undefined, // Parse the JSON string into an array of objects
+        base_ingredient: baseIngParsed.length > 0 ? baseIngredients : undefined, // Parse the JSON string into an array of objects
         total_qty: 0,
       })
     });
-  
+
     client.release();
     // Return the fetched drinks with their base ingredients
     return {
@@ -876,7 +883,7 @@ export const getAllDrinks = async()=>{
       message: "Drinks with base ingredients successfully fetched.",
       drinks: drinks
     };
- } catch (error:any) {
+  } catch (error: any) {
     // Handle any errors
     console.error("Error fetching drinks with base ingredients:", error);
     client.release();
@@ -884,12 +891,14 @@ export const getAllDrinks = async()=>{
       success: false,
       message: "Error fetching drinks with base ingredients: " + error.message,
     };
- }
+  }
 }
 
 
-export const getAllDesserts = async()=>{
-  let client = await db.connect();
+export const getAllDesserts = async () => {
+  // let client = await db.connect();
+  let client = await connectClientLocally();
+
   try {
     // SQL query to fetch drinks along with their base ingredients aggregated into a JSON array
     const query = `
@@ -906,10 +915,10 @@ export const getAllDesserts = async()=>{
     const result = await client.query(query);
 
     // The result now includes a JSON array of base ingredients for each drink
-    const Desserts:any = result.rows.map((row,index) =>{
+    const Desserts: any = result.rows.map((row, index) => {
       let baseIngParsed = JSON.parse(row.base_ingredient);
       // Map over baseIngParsed to construct the base_ingredient array
-      const baseIngredients = baseIngParsed.map((ing:any) => ({
+      const baseIngredients = baseIngParsed.map((ing: any) => ({
         ing_id: ing.id,
         ing_name: ing.name,
         ing_qty: ing.qty,
@@ -917,19 +926,19 @@ export const getAllDesserts = async()=>{
         custom_marker: ing.is_custom,
       }));
       console.log(baseIngParsed)
-      return({
+      return ({
         id: row.id,
         name: row.name,
         img_src: row.img,
         price: row.price,
         product_type: row.product_type,
         description: row.description,
-        base_ingredient:baseIngParsed.length>0?baseIngredients:undefined, // Parse the JSON string into an array of objects
+        base_ingredient: baseIngParsed.length > 0 ? baseIngredients : undefined, // Parse the JSON string into an array of objects
         total_qty: 0,
       })
     });
     // console.log(Desserts);
-  
+
 
     // Return the fetched Desserts with their base ingredients
     return {
@@ -937,126 +946,133 @@ export const getAllDesserts = async()=>{
       message: "Desserts with base ingredients successfully fetched.",
       desserts: Desserts
     };
- } catch (error:any) {
+  } catch (error: any) {
     // Handle any errors
     console.error("Error fetching desserts with base ingredients:", error);
     return {
       success: false,
       message: "Error fetching desserts with base ingredients: " + error.message,
     };
- }
+  }
 }
 
 
-const getBaseIngredientByIds = async(ids:Array<number>)=>{
+const getBaseIngredientByIds = async (ids: Array<number>) => {
   // if(ids.length>0){
-    let client = await db.connect();
-    // Start a transaction
-    await client.query("BEGIN");
+  // let client = await db.connect();
+  let client = await connectClientLocally();
 
-    try {
-        // Prepare the parameterized query
-        const query = `
+
+  // Start a transaction
+  await client.query("BEGIN");
+
+  try {
+    // Prepare the parameterized query
+    const query = `
           SELECT * FROM base_ingredient
           WHERE id = ANY($1)
         `;
 
-        // Execute the query with the provided IDs
-        const result = await client.query(query, [ids]);
+    // Execute the query with the provided IDs
+    const result = await client.query(query, [ids]);
 
-        // Commit the transaction
-        await client.query("COMMIT");
-        client.release();
-        // Return the fetched base ingredients
-        const transformedIngredients = result.rows.map(ing => ({
-          ing_id: ing.id,
-          ing_name: ing.name,
-          ing_qty: ing.qty,
-          ing_unit: ing.unit,
-          custom_marker: (ing.is_custom==="true")? true:false,
-        }));
-    
-        // Return the transformed base ingredients
-        return {
-          success: true,
-          message: "Base ingredients successfully fetched.",
-          ingredients: transformedIngredients,
-        };
+    // Commit the transaction
+    await client.query("COMMIT");
+    client.release();
+    // Return the fetched base ingredients
+    const transformedIngredients = result.rows.map(ing => ({
+      ing_id: ing.id,
+      ing_name: ing.name,
+      ing_qty: ing.qty,
+      ing_unit: ing.unit,
+      custom_marker: (ing.is_custom === "true") ? true : false,
+    }));
 
-    } catch (error: any) {
-        // Rollback the transaction in case of error
-        await client.query("ROLLBACK");
-        client.release();
-        // Log the error and return an error message
-        console.error("Error fetching base ingredients:", error);
-        return {
-          success: false,
-          message: "Error fetching base ingredients: " + error.message,
-        };
-    }
-  // }
-  // return {
-  //   success: false,
-  //   message: "empty request data"
-  // };
-} 
-const getCustomIngredientByIds = async(ids:Array<number>)=>{
-  // if(ids.length>0){
-    let client = await db.connect();
-    // Start a transaction
-    await client.query("BEGIN");
+    // Return the transformed base ingredients
+    return {
+      success: true,
+      message: "Base ingredients successfully fetched.",
+      ingredients: transformedIngredients,
+    };
 
-    try {
-        // Prepare the parameterized query
-        const query = `
-          SELECT * FROM custom_ingredient
-          WHERE id = ANY($1)
-        `;
-
-        // Execute the query with the provided IDs
-        const result = await client.query(query, [ids]);
-
-        // Commit the transaction
-        await client.query("COMMIT");
-        client.release();
-        // Return the fetched base ingredients
-         // Transform the result to match the expected structure
-        const transformedIngredients = result.rows.map(ing => ({
-          ing_id: ing.id,
-          ing_name: ing.name,
-          ing_qty: ing.qty,
-          ing_unit: ing.unit,
-          ing_price: ing.price,
-        }));
-
-        // Return the transformed custom ingredients
-        return {
-          success: true,
-          message: "Custom ingredients successfully fetched.",
-          ingredients: transformedIngredients,
-        };
-
-    } catch (error: any) {
-        // Rollback the transaction in case of error
-        await client.query("ROLLBACK");
-        client.release();
-        // Log the error and return an error message
-        console.error("Error fetching custom ingredients:", error);
-        return {
-          success: false,
-          message: "Error fetching custom ingredients: " + error.message,
-        };
-    }
+  } catch (error: any) {
+    // Rollback the transaction in case of error
+    await client.query("ROLLBACK");
+    client.release();
+    // Log the error and return an error message
+    console.error("Error fetching base ingredients:", error);
+    return {
+      success: false,
+      message: "Error fetching base ingredients: " + error.message,
+    };
+  }
   // }
   // return {
   //   success: false,
   //   message: "empty request data"
   // };
 }
-const getComboDrinksById = async(id:number)=>{
+const getCustomIngredientByIds = async (ids: Array<number>) => {
+  // if(ids.length>0){
+  // let client = await db.connect();
+  let client = await connectClientLocally();
+
+  // Start a transaction
+  await client.query("BEGIN");
+
+  try {
+    // Prepare the parameterized query
+    const query = `
+          SELECT * FROM custom_ingredient
+          WHERE id = ANY($1)
+        `;
+
+    // Execute the query with the provided IDs
+    const result = await client.query(query, [ids]);
+
+    // Commit the transaction
+    await client.query("COMMIT");
+    client.release();
+    // Return the fetched base ingredients
+    // Transform the result to match the expected structure
+    const transformedIngredients = result.rows.map(ing => ({
+      ing_id: ing.id,
+      ing_name: ing.name,
+      ing_qty: ing.qty,
+      ing_unit: ing.unit,
+      ing_price: ing.price,
+    }));
+
+    // Return the transformed custom ingredients
+    return {
+      success: true,
+      message: "Custom ingredients successfully fetched.",
+      ingredients: transformedIngredients,
+    };
+
+  } catch (error: any) {
+    // Rollback the transaction in case of error
+    await client.query("ROLLBACK");
+    client.release();
+    // Log the error and return an error message
+    console.error("Error fetching custom ingredients:", error);
+    return {
+      success: false,
+      message: "Error fetching custom ingredients: " + error.message,
+    };
+  }
+  // }
+  // return {
+  //   success: false,
+  //   message: "empty request data"
+  // };
+}
+const getComboDrinksById = async (id: number) => {
   // if(id){
-    let client = await db.connect();
-      const query = `
+  // let client = await db.connect();
+  let client = await connectClientLocally();
+
+  const query = `
         SELECT 
             cd.*, 
             cdd.*, 
@@ -1081,52 +1097,54 @@ const getComboDrinksById = async(id:number)=>{
             cd.id = $1
     `;
 
-    try {
-        const result = await client.query(query, [id]);
-        client.release();
-        // Transform the result to match the Zod schema
-        console.log("comdrinks",result.rows)
-        const transformedResult = result.rows.map(row => ({
-          id: row.id,
-          combo_drinks_id: row.combo_drink_id,
-          name: row.name,
-          product_type: row.type_name, // Rename type_name to product_type
-          img_src: row.img,
-          description: row.description,
-          base_ingredient: row.base_ingredient.map((ing: any) => ({
-            ing_id: ing.id,
-            ing_name: ing.name,
-            ing_qty: typeof ing.qty === 'string' ? parseFloat(ing.qty) : ing.qty, // Ensure ing_qty is a number or string
-            ing_unit: ing.unit,
-            custom_marker: ing.is_custom === 'true', // Convert 'true'/'false' string to boolean
-          })),
-          total_qty: row.quantity,
-          price: Number(row.price),
-          // Adjust other fields as necessary to match the Zod schema
-        }));
-  
-        return {
-          success: true,
-          message: "Combo drinks successfully fetched.",
-          combo_drinks: transformedResult,
-        };
-    } catch (error:any) {
-      client.release();
-        console.error('Error fetching combo drink details:', error);
-        return{
-          success: false,
-          message: "Error fetching combo drinks: " + error.message,
-        };
-    }
+  try {
+    const result = await client.query(query, [id]);
+    client.release();
+    // Transform the result to match the Zod schema
+    console.log("comdrinks", result.rows)
+    const transformedResult = result.rows.map(row => ({
+      id: row.id,
+      combo_drinks_id: row.combo_drink_id,
+      name: row.name,
+      product_type: row.type_name, // Rename type_name to product_type
+      img_src: row.img,
+      description: row.description,
+      base_ingredient: row.base_ingredient.map((ing: any) => ({
+        ing_id: ing.id,
+        ing_name: ing.name,
+        ing_qty: typeof ing.qty === 'string' ? parseFloat(ing.qty) : ing.qty, // Ensure ing_qty is a number or string
+        ing_unit: ing.unit,
+        custom_marker: ing.is_custom === 'true', // Convert 'true'/'false' string to boolean
+      })),
+      total_qty: row.quantity,
+      price: Number(row.price),
+      // Adjust other fields as necessary to match the Zod schema
+    }));
+
+    return {
+      success: true,
+      message: "Combo drinks successfully fetched.",
+      combo_drinks: transformedResult,
+    };
+  } catch (error: any) {
+    client.release();
+    console.error('Error fetching combo drink details:', error);
+    return {
+      success: false,
+      message: "Error fetching combo drinks: " + error.message,
+    };
+  }
   // }return {
   //   success: false,
   //   message: "empty request data"
   // };
-} 
-const getComboDessertsById = async (id:number)=>{
-  console.log("dessertid",id)
-      let client = await db.connect();
-      const query = ` 
+}
+const getComboDessertsById = async (id: number) => {
+  console.log("dessertid", id)
+  // let client = await db.connect();
+  let client = await connectClientLocally();
+
+  const query = ` 
         SELECT 
           cd.*, 
           cdd.*, 
@@ -1151,311 +1169,311 @@ const getComboDessertsById = async (id:number)=>{
           cd.id = $1
       `;
 
-    try {
-        const result = await client.query(query, [id]);
-        client.release();
+  try {
+    const result = await client.query(query, [id]);
+    client.release();
 
-        // Transform the result to match the Zod schema
-        console.log('asdfasd',result.rows)
-        const transformedResult = result.rows.map(row => ({
-          
-          id: row.id,
-          combo_dessert_id: id,
-          name: row.name,
-          product_type: row.type_name, // Rename type_name to product_type
-          img_src: row.img,
-          description: row.description,
-          base_ingredient: row.base_ingredient.map((ing: any) => ({
-            ing_id: ing.id,
-            ing_name: ing.name,
-            ing_qty: typeof ing.qty === 'string' ? parseFloat(ing.qty) : ing.qty, // Ensure ing_qty is a number or string
-            ing_unit: ing.unit,
-            custom_marker: ing.is_custom === 'true', // Convert 'true'/'false' string to boolean
-          })),
-          total_qty: row.quantity,
-          price: Number(row.price),
-          // Adjust other fields as necessary to match the Zod schema
-        }));
-  
-        return {
-          success: true,
-          message: "Combo dessert successfully fetched.",
-          combo_desserts: transformedResult,
-        };
-    } catch (error:any) {
-      client.release();
-        console.error('Error fetching combo dessert details:', error);
-        return{
-          success: false,
-          message: "Error fetching combo dessert: " + error.message,
-        };
-    }
-} 
+    // Transform the result to match the Zod schema
+    console.log('asdfasd', result.rows)
+    const transformedResult = result.rows.map(row => ({
+
+      id: row.id,
+      combo_dessert_id: id,
+      name: row.name,
+      product_type: row.type_name, // Rename type_name to product_type
+      img_src: row.img,
+      description: row.description,
+      base_ingredient: row.base_ingredient.map((ing: any) => ({
+        ing_id: ing.id,
+        ing_name: ing.name,
+        ing_qty: typeof ing.qty === 'string' ? parseFloat(ing.qty) : ing.qty, // Ensure ing_qty is a number or string
+        ing_unit: ing.unit,
+        custom_marker: ing.is_custom === 'true', // Convert 'true'/'false' string to boolean
+      })),
+      total_qty: row.quantity,
+      price: Number(row.price),
+      // Adjust other fields as necessary to match the Zod schema
+    }));
+
+    return {
+      success: true,
+      message: "Combo dessert successfully fetched.",
+      combo_desserts: transformedResult,
+    };
+  } catch (error: any) {
+    client.release();
+    console.error('Error fetching combo dessert details:', error);
+    return {
+      success: false,
+      message: "Error fetching combo dessert: " + error.message,
+    };
+  }
+}
 
 
 //...........update............
-const updateOrInsertBaseIngredient = async (productId:any,ingredients: any[], client: any) => {
+const updateOrInsertBaseIngredient = async (productId: any, ingredients: any[], client: any) => {
   try {
-     // Start a transaction
-     await client.query('BEGIN');
+    // Start a transaction
+    await client.query('BEGIN');
 
-     // Array to collect new ingredient IDs
+    // Array to collect new ingredient IDs
     const newIngredientIds = [];
 
-     try {
-       // Fetch all base ingredient IDs from the product table
-       const productIngredientIdsResult = await client.query(
-         `SELECT baseing_ids FROM products where id = ${productId}`
-       );
-       const productIngredientIds = productIngredientIdsResult.rows[0].baseing_ids;
- 
-       // Compare and remove unmatched ingredients
-       const providedIngIds = ingredients.map(ingredient => ingredient.ing_id);
-       const unmatchedIngIds = productIngredientIds.filter((id:any) => !providedIngIds.includes(id));
- 
-       // Remove unmatched ingredients from the base_ingredient table
-       for (const id of unmatchedIngIds) {
-         await client.query(
-           `DELETE FROM base_ingredient WHERE id = $1`,
-           [id]
-         );
-       }
- 
-       //removing any empty ingredients base on empty name
-       let finalIngredients = ingredients.filter((ing)=> ing.ing_name !== "");
-       // Update or insert ingredients
-       for (const ingredient of finalIngredients) {
-         const { ing_id, ing_name, ing_qty, ing_unit, custom_marker } = ingredient;
- 
-         // Check if the ingredient exists
-         const exists = await client.query(
-           `SELECT id FROM base_ingredient WHERE id = $1`,
-           [ing_id]
-         );
- 
-         if (exists.rows.length > 0) {
-           // If the ingredient exists, update it
-           await client.query(
-             `UPDATE base_ingredient SET name = $1, qty = $2, unit = $3, is_custom = $4 WHERE id = $5`,
-             [ing_name, ing_qty, ing_unit, custom_marker, ing_id]
-           );
-         } else {
-           // If the ingredient does not exist, insert it
-           const insertResult = await client.query(
-             `INSERT INTO base_ingredient (name, qty, unit, is_custom) VALUES ($1, $2, $3, $4) RETURNING id`,
-             [ing_name, ing_qty, ing_unit, custom_marker]
-           );
-           // Push the new ingredient ID into the array
-          newIngredientIds.push(insertResult.rows[0].id);
-         }
-       }
-        // Fetch the updated list of ingredient IDs for the product
-        const updatedIngredientIdsResult = await client.query(
-          `SELECT baseing_ids FROM products WHERE id = $1`,
-          [productId]
-        );
-       // Commit the transaction
-       await client.query('COMMIT');
+    try {
+      // Fetch all base ingredient IDs from the product table
+      const productIngredientIdsResult = await client.query(
+        `SELECT baseing_ids FROM products where id = ${productId}`
+      );
+      const productIngredientIds = productIngredientIdsResult.rows[0].baseing_ids;
 
-        const updatedIngredientIds:any = updatedIngredientIdsResult.rows[0].baseing_ids
-        // console.log("baseingids",...updatedIngredientIds,...newIngredientIds)
-        // Return the updated list of ingredient IDs
-        return {ids: [...updatedIngredientIds,...newIngredientIds]};
+      // Compare and remove unmatched ingredients
+      const providedIngIds = ingredients.map(ingredient => ingredient.ing_id);
+      const unmatchedIngIds = productIngredientIds.filter((id: any) => !providedIngIds.includes(id));
+
+      // Remove unmatched ingredients from the base_ingredient table
+      for (const id of unmatchedIngIds) {
+        await client.query(
+          `DELETE FROM base_ingredient WHERE id = $1`,
+          [id]
+        );
+      }
+
+      //removing any empty ingredients base on empty name
+      let finalIngredients = ingredients.filter((ing) => ing.ing_name !== "");
+      // Update or insert ingredients
+      for (const ingredient of finalIngredients) {
+        const { ing_id, ing_name, ing_qty, ing_unit, custom_marker } = ingredient;
+
+        // Check if the ingredient exists
+        const exists = await client.query(
+          `SELECT id FROM base_ingredient WHERE id = $1`,
+          [ing_id]
+        );
+
+        if (exists.rows.length > 0) {
+          // If the ingredient exists, update it
+          await client.query(
+            `UPDATE base_ingredient SET name = $1, qty = $2, unit = $3, is_custom = $4 WHERE id = $5`,
+            [ing_name, ing_qty, ing_unit, custom_marker, ing_id]
+          );
+        } else {
+          // If the ingredient does not exist, insert it
+          const insertResult = await client.query(
+            `INSERT INTO base_ingredient (name, qty, unit, is_custom) VALUES ($1, $2, $3, $4) RETURNING id`,
+            [ing_name, ing_qty, ing_unit, custom_marker]
+          );
+          // Push the new ingredient ID into the array
+          newIngredientIds.push(insertResult.rows[0].id);
+        }
+      }
+      // Fetch the updated list of ingredient IDs for the product
+      const updatedIngredientIdsResult = await client.query(
+        `SELECT baseing_ids FROM products WHERE id = $1`,
+        [productId]
+      );
+      // Commit the transaction
+      await client.query('COMMIT');
+
+      const updatedIngredientIds: any = updatedIngredientIdsResult.rows[0].baseing_ids
+      // console.log("baseingids",...updatedIngredientIds,...newIngredientIds)
+      // Return the updated list of ingredient IDs
+      return { ids: [...updatedIngredientIds, ...newIngredientIds] };
     } catch (error) {
       // Rollback the transaction in case of any error
       await client.query('ROLLBACK');
       throw error; // Rethrow the error to be handled by the caller
     }
   } catch (error) {
-     console.error('Error updating or inserting base ingredients:', error);
-     throw error; // Rethrow the error to be handled by the caller
+    console.error('Error updating or inserting base ingredients:', error);
+    throw error; // Rethrow the error to be handled by the caller
   }
- };
+};
 
- const updateOrInsertCustomIngredient = async (productId:any, ingredients: any[], client: any) => {
+const updateOrInsertCustomIngredient = async (productId: any, ingredients: any[], client: any) => {
   try {
-     // Start a transaction
-     await client.query('BEGIN');
- 
-      // Array to collect new ingredient IDs
-      const newIngredientIds = [];
+    // Start a transaction
+    await client.query('BEGIN');
 
-     try {
-       // Fetch all custom ingredient IDs from the product table
-       const productIngredientIdsResult = await client.query(
-         `SELECT customing_ids FROM products WHERE id = ${productId}`
-       );
+    // Array to collect new ingredient IDs
+    const newIngredientIds = [];
 
-       const productIngredientIds = productIngredientIdsResult.rows[0].customing_ids;
+    try {
+      // Fetch all custom ingredient IDs from the product table
+      const productIngredientIdsResult = await client.query(
+        `SELECT customing_ids FROM products WHERE id = ${productId}`
+      );
 
-       // Compare and remove unmatched ingredients
-       const providedIngIds = ingredients.map(ingredient => ingredient.ing_id);
-       const unmatchedIngIds = productIngredientIds.filter((id:any) => !providedIngIds.includes(id));
+      const productIngredientIds = productIngredientIdsResult.rows[0].customing_ids;
 
-       // Remove unmatched ingredients from the custom_ingredient table
-       for (const id of unmatchedIngIds) {
-         await client.query(
-           `DELETE FROM custom_ingredient WHERE id = $1`,
-           [id]
-         );
-       }
- 
+      // Compare and remove unmatched ingredients
+      const providedIngIds = ingredients.map(ingredient => ingredient.ing_id);
+      const unmatchedIngIds = productIngredientIds.filter((id: any) => !providedIngIds.includes(id));
+
+      // Remove unmatched ingredients from the custom_ingredient table
+      for (const id of unmatchedIngIds) {
+        await client.query(
+          `DELETE FROM custom_ingredient WHERE id = $1`,
+          [id]
+        );
+      }
+
       //removing any empty ingredients base on empty name
-      let finalIngredients = ingredients.filter((ing)=> ing.ing_name !== "");
-       // Update or insert ingredients
-       for (const ingredient of finalIngredients) {
-         const { ing_id, ing_name, ing_qty, ing_unit, ing_price } = ingredient;
- 
-         // Check if the ingredient exists
-         const exists = await client.query(
-           `SELECT id FROM custom_ingredient WHERE id = $1`,
-           [ing_id]
-         );
- 
-         if (exists.rows.length > 0) {
-           // If the ingredient exists, update it
+      let finalIngredients = ingredients.filter((ing) => ing.ing_name !== "");
+      // Update or insert ingredients
+      for (const ingredient of finalIngredients) {
+        const { ing_id, ing_name, ing_qty, ing_unit, ing_price } = ingredient;
+
+        // Check if the ingredient exists
+        const exists = await client.query(
+          `SELECT id FROM custom_ingredient WHERE id = $1`,
+          [ing_id]
+        );
+
+        if (exists.rows.length > 0) {
+          // If the ingredient exists, update it
           //  console.log("ingid",ing_id)
-           await client.query(
-             `UPDATE custom_ingredient SET name = $1, qty = $2, unit = $3, price = $4 WHERE id = $5`,
-             [ing_name, ing_qty, ing_unit, ing_price, ing_id]
-           );
-         } else {
-           // If the ingredient does not exist, insert it
-           
-           const insertResult = await client.query(
-             `INSERT INTO custom_ingredient (name, qty, unit, price) VALUES ($1, $2, $3, $4) Returning id`,
-             [ing_name, ing_qty, ing_unit, ing_price]
-           );
+          await client.query(
+            `UPDATE custom_ingredient SET name = $1, qty = $2, unit = $3, price = $4 WHERE id = $5`,
+            [ing_name, ing_qty, ing_unit, ing_price, ing_id]
+          );
+        } else {
+          // If the ingredient does not exist, insert it
 
-            // Push the new ingredient ID into the array
-            newIngredientIds.push(insertResult.rows[0].id);
-         }
-       }
- 
-       // Commit the transaction
-       await client.query('COMMIT');
+          const insertResult = await client.query(
+            `INSERT INTO custom_ingredient (name, qty, unit, price) VALUES ($1, $2, $3, $4) Returning id`,
+            [ing_name, ing_qty, ing_unit, ing_price]
+          );
 
-       // Fetch the updated list of ingredient IDs for the product
-       const updatedIngredientIdsResult = await client.query(
+          // Push the new ingredient ID into the array
+          newIngredientIds.push(insertResult.rows[0].id);
+        }
+      }
+
+      // Commit the transaction
+      await client.query('COMMIT');
+
+      // Fetch the updated list of ingredient IDs for the product
+      const updatedIngredientIdsResult = await client.query(
         `SELECT customing_ids FROM products WHERE id = $1`,
         [productId]
       );
 
-      const updatedIngredientIds:Array<number> = updatedIngredientIdsResult.rows[0].customing_ids;
+      const updatedIngredientIds: Array<number> = updatedIngredientIdsResult.rows[0].customing_ids;
       // console.log(updatedIngredientIdsResult.rows[0],...newIngredientIds)
       // Return the updated list of ingredient IDs
-      return {ids: [...updatedIngredientIds,...newIngredientIds]};
-     } catch (error) {
-       // Rollback the transaction in case of any error
-       await client.query('ROLLBACK');
-       throw error; // Rethrow the error to be handled by the caller
-     }
+      return { ids: [...updatedIngredientIds, ...newIngredientIds] };
+    } catch (error) {
+      // Rollback the transaction in case of any error
+      await client.query('ROLLBACK');
+      throw error; // Rethrow the error to be handled by the caller
+    }
   } catch (error) {
-     console.error('Error updating or inserting custom ingredients:', error);
-     throw error; // Rethrow the error to be handled by the caller
+    console.error('Error updating or inserting custom ingredients:', error);
+    throw error; // Rethrow the error to be handled by the caller
   }
- };
+};
 
 
- const updateOrInsertComboDrinks = async (comboDrinks: any[], comboDrinksId: number, client: any) => {
+const updateOrInsertComboDrinks = async (comboDrinks: any[], comboDrinksId: number, client: any) => {
   try {
-     // Start a transaction
-     await client.query('BEGIN');
- 
-     try {
-       // Fetch all drink IDs from the combo_drink_details table for the specified combo drink
-       const comboDrinkDetailsResult = await client.query(
-         `SELECT drink_id FROM combo_drink_details WHERE combo_drink_id = $1`,
-         [comboDrinksId]
-       );
-       const comboDrinkDetailsIds = comboDrinkDetailsResult.rows.map((row:any) => row.drink_id);
- 
-       // Compare and remove unmatched drinks
-       const providedDrinkIds = comboDrinks.map(comboDrink => comboDrink.id);
-       const unmatchedDrinkIds = comboDrinkDetailsIds.filter((id:any) => !providedDrinkIds.includes(id));
- 
-       // Remove unmatched drinks from the combo_drink_details table
-       for (const id of unmatchedDrinkIds) {
-         await client.query(
-           `DELETE FROM combo_drink_details WHERE combo_drink_id = $1 AND drink_id = $2`,
-           [comboDrinksId, id]
-         );
-       }
- 
+    // Start a transaction
+    await client.query('BEGIN');
+
+    try {
+      // Fetch all drink IDs from the combo_drink_details table for the specified combo drink
+      const comboDrinkDetailsResult = await client.query(
+        `SELECT drink_id FROM combo_drink_details WHERE combo_drink_id = $1`,
+        [comboDrinksId]
+      );
+      const comboDrinkDetailsIds = comboDrinkDetailsResult.rows.map((row: any) => row.drink_id);
+
+      // Compare and remove unmatched drinks
+      const providedDrinkIds = comboDrinks.map(comboDrink => comboDrink.id);
+      const unmatchedDrinkIds = comboDrinkDetailsIds.filter((id: any) => !providedDrinkIds.includes(id));
+
+      // Remove unmatched drinks from the combo_drink_details table
+      for (const id of unmatchedDrinkIds) {
+        await client.query(
+          `DELETE FROM combo_drink_details WHERE combo_drink_id = $1 AND drink_id = $2`,
+          [comboDrinksId, id]
+        );
+      }
+
       // Calculate the total price for the combo dessert
       let totalPrice = 0;
       comboDrinks?.forEach(drink => {
         totalPrice += drink.total_qty * Number(drink.price);
       });
 
-       // Update or insert combo drinks
-       for (const comboDrink of comboDrinks) {
-         const { id } = comboDrink;
- 
-         // Check if the combo drink exists
-         const exists = await client.query(
-           `SELECT id FROM combo_drink_details WHERE combo_drink_id = $1 AND drink_id = $2`,
-           [comboDrinksId, id]
-         );
- 
-         if (exists.rows.length > 0) {
-           // If the combo drink exists, update it
-           await client.query(
-             `UPDATE combo_drink_details SET quantity = $1, WHERE combo_drink_id = $2 AND drink_id = $3`,
-             [comboDrink.total_qty, comboDrinksId, id]
-           );
-         } else {
-           // If the combo drink does not exist, insert it
-           await client.query(
-             `INSERT INTO combo_drink_details (combo_drink_id, drink_id, quantity) VALUES ($1, $2, $3, $4)`,
-             [comboDrinksId, id, comboDrink.total_qty]
-           );
-         }
-          // Update the price in the combo_drinks table
-          
-       }
-       await client.query(
-          `UPDATE combo_drinks SET price = $1 WHERE id = $2`,
-          [totalPrice, comboDrinksId]
-        );
- 
-       // Commit the transaction
-       await client.query('COMMIT');
-     } catch (error) {
-       // Rollback the transaction in case of any error
-       await client.query('ROLLBACK');
-       throw error; // Rethrow the error to be handled by the caller
-     }
-  } catch (error) {
-     console.error('Error updating or inserting combo drinks:', error);
-     throw error; // Rethrow the error to be handled by the caller
-  }
- };
+      // Update or insert combo drinks
+      for (const comboDrink of comboDrinks) {
+        const { id } = comboDrink;
 
- const updateOrInsertComboDesserts = async (comboDesserts: any[], comboDessertsId: number, client: any) => {
+        // Check if the combo drink exists
+        const exists = await client.query(
+          `SELECT id FROM combo_drink_details WHERE combo_drink_id = $1 AND drink_id = $2`,
+          [comboDrinksId, id]
+        );
+
+        if (exists.rows.length > 0) {
+          // If the combo drink exists, update it
+          await client.query(
+            `UPDATE combo_drink_details SET quantity = $1, WHERE combo_drink_id = $2 AND drink_id = $3`,
+            [comboDrink.total_qty, comboDrinksId, id]
+          );
+        } else {
+          // If the combo drink does not exist, insert it
+          await client.query(
+            `INSERT INTO combo_drink_details (combo_drink_id, drink_id, quantity) VALUES ($1, $2, $3, $4)`,
+            [comboDrinksId, id, comboDrink.total_qty]
+          );
+        }
+        // Update the price in the combo_drinks table
+
+      }
+      await client.query(
+        `UPDATE combo_drinks SET price = $1 WHERE id = $2`,
+        [totalPrice, comboDrinksId]
+      );
+
+      // Commit the transaction
+      await client.query('COMMIT');
+    } catch (error) {
+      // Rollback the transaction in case of any error
+      await client.query('ROLLBACK');
+      throw error; // Rethrow the error to be handled by the caller
+    }
+  } catch (error) {
+    console.error('Error updating or inserting combo drinks:', error);
+    throw error; // Rethrow the error to be handled by the caller
+  }
+};
+
+const updateOrInsertComboDesserts = async (comboDesserts: any[], comboDessertsId: number, client: any) => {
   try {
-     // Start a transaction
-     await client.query('BEGIN');
- 
-     try {
-       // Fetch all dessert IDs from the combo_dessert_details table for the specified combo dessert
-       const comboDessertDetailsResult = await client.query(
-         `SELECT dessert_id FROM combo_dessert_details WHERE combo_dessert_id = $1`,
-         [comboDessertsId]
-       );
-       const comboDessertDetailsIds = comboDessertDetailsResult.rows.map((row:any) => row.dessert_id);
- 
-       // Compare and remove unmatched desserts
-       const providedDessertIds = comboDesserts.map(comboDessert => comboDessert.id);
-       const unmatchedDessertIds = comboDessertDetailsIds.filter((id:any) => !providedDessertIds.includes(id));
- 
-       // Remove unmatched desserts from the combo_dessert_details table
-       for (const id of unmatchedDessertIds) {
-         await client.query(
-           `DELETE FROM combo_dessert_details WHERE combo_dessert_id = $1 AND dessert_id = $2`,
-           [comboDessertsId, id]
-         );
-       }
+    // Start a transaction
+    await client.query('BEGIN');
+
+    try {
+      // Fetch all dessert IDs from the combo_dessert_details table for the specified combo dessert
+      const comboDessertDetailsResult = await client.query(
+        `SELECT dessert_id FROM combo_dessert_details WHERE combo_dessert_id = $1`,
+        [comboDessertsId]
+      );
+      const comboDessertDetailsIds = comboDessertDetailsResult.rows.map((row: any) => row.dessert_id);
+
+      // Compare and remove unmatched desserts
+      const providedDessertIds = comboDesserts.map(comboDessert => comboDessert.id);
+      const unmatchedDessertIds = comboDessertDetailsIds.filter((id: any) => !providedDessertIds.includes(id));
+
+      // Remove unmatched desserts from the combo_dessert_details table
+      for (const id of unmatchedDessertIds) {
+        await client.query(
+          `DELETE FROM combo_dessert_details WHERE combo_dessert_id = $1 AND dessert_id = $2`,
+          [comboDessertsId, id]
+        );
+      }
 
       // Calculate the total price for the combo dessert
       let totalPrice = 0;
@@ -1463,151 +1481,155 @@ const updateOrInsertBaseIngredient = async (productId:any,ingredients: any[], cl
         totalPrice += dessert.total_qty * Number(dessert.price);
       });
 
-       // Update or insert combo desserts
-       for (const comboDessert of comboDesserts) {
-         const { id, name, price } = comboDessert;
- 
-         // Check if the combo dessert exists
-         const exists = await client.query(
-           `SELECT id FROM combo_dessert_details WHERE combo_dessert_id = $1 AND dessert_id = $2`,
-           [comboDessertsId, id]
-         );
- 
-         if (exists.rows.length > 0) {
-           // If the combo dessert exists, update it
-           await client.query(
-             `UPDATE combo_dessert_details SET quantity = $1 WHERE combo_dessert_id = $2 AND dessert_id = $3`,
-             [comboDessert.total_qty, comboDessertsId, id]
-           );
-         } else {
-           // If the combo dessert does not exist, insert it
-           await client.query(
-             `INSERT INTO combo_dessert_details (combo_dessert_id, dessert_id, price) VALUES ($1, $2, $3)`,
-             [comboDessertsId, id, totalPrice]
-           );
-         }
-       }
-       await client.query(
+      // Update or insert combo desserts
+      for (const comboDessert of comboDesserts) {
+        const { id, name, price } = comboDessert;
+
+        // Check if the combo dessert exists
+        const exists = await client.query(
+          `SELECT id FROM combo_dessert_details WHERE combo_dessert_id = $1 AND dessert_id = $2`,
+          [comboDessertsId, id]
+        );
+
+        if (exists.rows.length > 0) {
+          // If the combo dessert exists, update it
+          await client.query(
+            `UPDATE combo_dessert_details SET quantity = $1 WHERE combo_dessert_id = $2 AND dessert_id = $3`,
+            [comboDessert.total_qty, comboDessertsId, id]
+          );
+        } else {
+          // If the combo dessert does not exist, insert it
+          await client.query(
+            `INSERT INTO combo_dessert_details (combo_dessert_id, dessert_id, price) VALUES ($1, $2, $3)`,
+            [comboDessertsId, id, totalPrice]
+          );
+        }
+      }
+      await client.query(
         `UPDATE combo_desserts SET price = $1 WHERE id = $2`,
         [totalPrice, comboDessertsId]
       );
- 
-       // Commit the transaction
-       await client.query('COMMIT');
-     } catch (error) {
-       // Rollback the transaction in case of any error
-       await client.query('ROLLBACK');
-       throw error; // Rethrow the error to be handled by the caller
-     }
+
+      // Commit the transaction
+      await client.query('COMMIT');
+    } catch (error) {
+      // Rollback the transaction in case of any error
+      await client.query('ROLLBACK');
+      throw error; // Rethrow the error to be handled by the caller
+    }
   } catch (error) {
-     console.error('Error updating or inserting combo desserts:', error);
-     throw error; // Rethrow the error to be handled by the caller
+    console.error('Error updating or inserting combo desserts:', error);
+    throw error; // Rethrow the error to be handled by the caller
   }
- };
+};
 
 
- export const updateProduct = async (product: any) => {
-  let client = await db.connect();
-  
+export const updateProduct = async (product: any) => {
+  // let client = await db.connect();
+  let client = await connectClientLocally();
+
+
   try {
-    let {product_name, product_img, product_des, product_price, base_ingredient, custom_ingredient, combo_drinks, combo_desserts, product_id}=product;
+    let { product_name, product_img, product_des, product_price, base_ingredient, custom_ingredient, combo_drinks, combo_desserts, product_id } = product;
     // console.log("for update",product,product_id);
-    let baseIngIds:Array<number>=[];
-    let customIngIds:Array<number>=[];
-    let comboDrinkId:string='';
-    let comboDessertId:string='';// Start a transaction
-  //    await client.query('BEGIN');
+    let baseIngIds: Array<number> = [];
+    let customIngIds: Array<number> = [];
+    let comboDrinkId: string = '';
+    let comboDessertId: string = '';// Start a transaction
+    //    await client.query('BEGIN');
 
-      // Create an array of promises
+    // Create an array of promises
     const promises = [];
     // Add promises to the array if the conditions are met
-   if (product.base_ingredient && product.base_ingredient.length > 0) {
-     promises.push(updateOrInsertBaseIngredient(product_id,base_ingredient,client).then(result => baseIngIds = result.ids));
-   }
-   if (product.custom_ingredient && product.custom_ingredient.length > 0) {
-     promises.push(updateOrInsertCustomIngredient(product_id,custom_ingredient,client).then(result => customIngIds = result.ids));
-   }
-   if (product.combo_drinks && product.combo_drinks.length > 0) {
-     promises.push(updateOrInsertComboDrinks(combo_drinks,combo_drinks[0]?.combo_drinks_id,client));
-   }
-   if (product.combo_desserts && product.combo_desserts.length > 0) {
-     promises.push(updateOrInsertComboDesserts(combo_desserts,combo_desserts[0]?.combo_dessert_id,client));
-   }
+    if (product.base_ingredient && product.base_ingredient.length > 0) {
+      promises.push(updateOrInsertBaseIngredient(product_id, base_ingredient, client).then(result => baseIngIds = result.ids));
+    }
+    if (product.custom_ingredient && product.custom_ingredient.length > 0) {
+      promises.push(updateOrInsertCustomIngredient(product_id, custom_ingredient, client).then(result => customIngIds = result.ids));
+    }
+    if (product.combo_drinks && product.combo_drinks.length > 0) {
+      promises.push(updateOrInsertComboDrinks(combo_drinks, combo_drinks[0]?.combo_drinks_id, client));
+    }
+    if (product.combo_desserts && product.combo_desserts.length > 0) {
+      promises.push(updateOrInsertComboDesserts(combo_desserts, combo_desserts[0]?.combo_dessert_id, client));
+    }
 
-   // Wait for all promises to resolve
-   await Promise.all(promises);
+    // Wait for all promises to resolve
+    await Promise.all(promises);
 
-     try {
-       // Update the product with the new details
-       (combo_desserts && combo_desserts.length>0)? comboDessertId = combo_desserts[0].combo_dessert_id:null;
-       (combo_drinks && combo_drinks.length>0)? comboDrinkId = combo_drinks[0].combo_drinks_id:null;
-       await client.query(
-         `UPDATE products SET name = $1, img = $2, description = $3, price = $4, baseing_ids = $5, customing_ids = $6, combo_drinks_id = $7, combo_dessert_id = $8 WHERE id = $9`,
-         [product_name,product_img,product_des,Number(product_price),baseIngIds??null,customIngIds??null,Number(comboDrinkId)??null,Number(comboDessertId)??null,product_id]
-       );
- 
-       // Commit the transaction
-       await client.query('COMMIT');
-       client.release();
-       return {success: true}
-     } catch (error) {
-       // Rollback the transaction in case of any error
-       
-       await client.query('ROLLBACK');
-       client.release();
-       throw error; // Rethrow the error to be handled by the caller
-       
-     }
+    try {
+      // Update the product with the new details
+      (combo_desserts && combo_desserts.length > 0) ? comboDessertId = combo_desserts[0].combo_dessert_id : null;
+      (combo_drinks && combo_drinks.length > 0) ? comboDrinkId = combo_drinks[0].combo_drinks_id : null;
+      await client.query(
+        `UPDATE products SET name = $1, img = $2, description = $3, price = $4, baseing_ids = $5, customing_ids = $6, combo_drinks_id = $7, combo_dessert_id = $8 WHERE id = $9`,
+        [product_name, product_img, product_des, Number(product_price), baseIngIds ?? null, customIngIds ?? null, Number(comboDrinkId) ?? null, Number(comboDessertId) ?? null, product_id]
+      );
+
+      // Commit the transaction
+      await client.query('COMMIT');
+      client.release();
+      return { success: true }
+    } catch (error) {
+      // Rollback the transaction in case of any error
+
+      await client.query('ROLLBACK');
+      client.release();
+      throw error; // Rethrow the error to be handled by the caller
+
+    }
   } catch (error) {
     client.release();
-     console.error('Error updating product:', error);
-     throw error; // Rethrow the error to be handled by the caller
+    console.error('Error updating product:', error);
+    throw error; // Rethrow the error to be handled by the caller
   }
- };
+};
 
 
-export const deleteProduct = async(productId:string)=>{
-  let client = await db.connect();
+export const deleteProduct = async (productId: string) => {
+  // let client = await db.connect();
+  let client = await connectClientLocally();
+
   await client.query('BEGIN');
   try {
     const baseIngredientIdsResult = await client.query(
       `SELECT baseing_ids FROM products WHERE id = $1`,
       [Number(productId)]
-   );
-   const customIngredientIdsResult = await client.query(
+    );
+    const customIngredientIdsResult = await client.query(
       `SELECT customing_ids FROM products WHERE id = $1`,
       [Number(productId)]
-   );
-   const comboDrinkIdsResult = await client.query(
+    );
+    const comboDrinkIdsResult = await client.query(
       `SELECT combo_drinks_id FROM products WHERE id = $1`,
       [Number(productId)]
-   );
-   const comboDessertIdsResult = await client.query(
+    );
+    const comboDessertIdsResult = await client.query(
       `SELECT combo_dessert_id FROM products WHERE id = $1`,
       [Number(productId)]
-   );
+    );
 
-   const promises = [];
+    const promises = [];
 
-   if(baseIngredientIdsResult.rows[0].baseing_ids.length>0){
+    if (baseIngredientIdsResult.rows[0].baseing_ids.length > 0) {
       promises.push(
         await client.query(
           `DELETE FROM base_ingredient WHERE id = ANY($1)`,
           [baseIngredientIdsResult.rows[0].baseing_ids]
         )
       )
-   }
+    }
 
-   if(customIngredientIdsResult.rows[0].customing_ids.length>0){
+    if (customIngredientIdsResult.rows[0].customing_ids.length > 0) {
       promises.push(
         await client.query(
           `DELETE FROM custom_ingredient WHERE id = ANY($1)`,
           [customIngredientIdsResult.rows[0].customing_ids]
         )
       )
-   }
+    }
 
-   if(comboDrinkIdsResult.rows[0].combo_drinks_id !== 0 && comboDrinkIdsResult.rows[0].combo_drinks_id !== null){
+    if (comboDrinkIdsResult.rows[0].combo_drinks_id !== 0 && comboDrinkIdsResult.rows[0].combo_drinks_id !== null) {
       promises.push(
         await client.query(
           `DELETE FROM combo_drink_details WHERE combo_drink_id = $1`,
@@ -1620,9 +1642,9 @@ export const deleteProduct = async(productId:string)=>{
           [comboDrinkIdsResult.rows[0].combo_drinks_id]
         )
       )
-   }
+    }
 
-   if(comboDessertIdsResult.rows[0].combo_dessert_id !== 0 && comboDessertIdsResult.rows[0].combo_dessert_id !== null){
+    if (comboDessertIdsResult.rows[0].combo_dessert_id !== 0 && comboDessertIdsResult.rows[0].combo_dessert_id !== null) {
       promises.push(
         await client.query(
           `DELETE FROM combo_dessert_details WHERE combo_drink_id = $1`,
@@ -1635,7 +1657,7 @@ export const deleteProduct = async(productId:string)=>{
           [comboDessertIdsResult.rows[0].combo_dessert_id]
         )
       )
-   }
+    }
 
     // Wait for all promises to resolve
     await Promise.all(promises);
@@ -1646,11 +1668,11 @@ export const deleteProduct = async(productId:string)=>{
     await client.query('COMMIT');
     client.release();
     console.log(`Product with ID ${productId} has been deleted.`);
-    return {success:true, message:`Product with ID ${productId} has been deleted.`}
- } catch (error) {
+    return { success: true, message: `Product with ID ${productId} has been deleted.` }
+  } catch (error) {
     await client.query('ROLLBACK');
     client.release();
     console.error('Error deleting product:', error);
     throw error; // Rethrow the error to be handled by the caller
- }
+  }
 }

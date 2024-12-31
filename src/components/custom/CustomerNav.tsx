@@ -20,6 +20,7 @@ import OrderedItem from "./OrderedItem";
 
 const CustomerNav = () => {
    let currentPath = usePathname();
+   console.log("currentPath", currentPath)
 
    return (
       <div className="flex justify-between">

@@ -6,6 +6,7 @@ import { PaymentPayload } from '@/lib/validator'
 import { khaltiPay } from '@/lib/actions/payment.action'
 import { validateAndSanitizeUrl } from '@/lib/utils'
 import { restaurant_id } from '@/lib/placeHolderData'
+import { useRouter } from 'next/router'
 
 const OrderBtn = () => {
    const [totalItem, setTotalItem] = useState(0);

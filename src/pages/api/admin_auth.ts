@@ -6,6 +6,8 @@ import { z } from "zod";
 import { nanoid } from 'nanoid'
 import { getAdminJwtSecretKey } from "@/lib/auth";
 import cookie from "cookie"
+import { middleware } from "@/middleware";
+import { NextRequest } from "next/server";
 
 export default async function handler(req:NextApiRequest, res:NextApiResponse){
    const reqObj:z.infer<typeof AdminLoginType> = req.body;
@@ -29,8 +31,9 @@ export default async function handler(req:NextApiRequest, res:NextApiResponse){
          res.setHeader('Set-Cookie', cookie.serialize('admin_auth_tkn', token,{
             httpOnly: true,
             path: '/',
-            secure: process.env.NODE_ENV === 'production'
+            // secure: process.env.NODE_ENV === 'production'
          }));
+
          res.status(200).json({success: result.success, identity_code: result.restauranIdentityCode, error: ""});
       }
       if(req.method === 'GET'){
