@@ -6,9 +6,9 @@ import { ProductFormSchema } from "../validator";
 import { connectClientLocally } from '../database/localdb';
 // import { PoolClient } from "pg";
 
-export const createProduct = async (
-  productData: z.infer<typeof ProductFormSchema>
-
+export const createProductByShopId = async (
+  productData: z.infer<typeof ProductFormSchema>,
+  shopId: String
 ) => {
   // let client = await db.connect();
   let client = await connectClientLocally();
@@ -39,23 +39,26 @@ export const createProduct = async (
   try {
     pCategoryId = await createCategory(
       { name: product_category, tableName: "product_category" },
-      client
+      client,
+      shopId
     );
     pTypeId = await createCategory(
       { name: product_type, tableName: "product_type" },
-      client
+      client,
+      shopId
     );
     pDietTypeId = await createCategory(
       { name: diet_type, tableName: "product_diet_type" },
-      client
+      client,
+      shopId
     );
     if (base_ingredient) {
-      let result = await createBaseIngredient(base_ingredient, client);
+      let result = await createBaseIngredient(base_ingredient, client, shopId);
       let { ids } = result
       if (ids) baseIngIds = ids;
     }
     if (custom_ingredient) {
-      let result = await createCustomIngredient(custom_ingredient, client);
+      let result = await createCustomIngredient(custom_ingredient, client, shopId);
       let { ids } = result
       if (ids) customIngIds = ids;
     }
@@ -75,7 +78,8 @@ export const createProduct = async (
           comboDrinkId: comboDrinkId,
           comboDessertId: comboDessertId
         },
-        client
+        client,
+        shopId
       );
       console.log("product result", result)
     }
@@ -83,13 +87,13 @@ export const createProduct = async (
     if (product_type && product_category === "combo") {
 
       if (combo_drinks && combo_drinks?.length > 0) {
-        let result = await createComboDrinks(productData, client);
+        let result = await createComboDrinks(productData, client, shopId);
         let { id } = result
         if (id) comboDrinkId = id;
         console.log("comboDrinkid", result)
       }
       if (combo_desserts && combo_desserts?.length > 0) {
-        let result = await createComboDessert(productData, client);
+        let result = await createComboDessert(productData, client, shopId);
         let { id } = result
         if (id) comboDessertId = id;
         console.log("comboDessertid", result)
@@ -109,7 +113,8 @@ export const createProduct = async (
           comboDrinkId: comboDrinkId,
           comboDessertId: comboDessertId
         },
-        client
+        client,
+        shopId
       );
       console.log("combo product result", result)
     }
@@ -129,7 +134,7 @@ type categoryType = {
   name: string;
   tableName: string;
 };
-const createCategory = async (category: categoryType, client: any) => {
+const createCategory = async (category: categoryType, client: any, shopId: String) => {
   // Start a transaction
   await client.query("BEGIN");
 
@@ -141,9 +146,9 @@ const createCategory = async (category: categoryType, client: any) => {
             IF NOT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
-                AND table_name = '${category.tableName}'
+                AND table_name = '${shopId}_${category.tableName}'
             ) THEN
-                CREATE TABLE ${category.tableName} (
+                CREATE TABLE ${shopId}_${category.tableName} (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     UNIQUE (name)
@@ -155,7 +160,7 @@ const createCategory = async (category: categoryType, client: any) => {
     // Check if the name exists
     const exists = await client.query(
       `
-        SELECT id FROM ${category.tableName} 
+        SELECT id FROM ${shopId}_${category.tableName} 
         WHERE name = $1
       `,
       [category.name]
@@ -171,7 +176,7 @@ const createCategory = async (category: categoryType, client: any) => {
     } else {
       // If the name does not exist, insert it and return the new id
       const result = await client.query(
-        `INSERT INTO ${category.tableName} (name) VALUES ($1) RETURNING id;`,
+        `INSERT INTO ${shopId}_${category.tableName} (name) VALUES ($1) RETURNING id;`,
         [category.name]
       );
 
@@ -200,7 +205,8 @@ type baseIngType = {
 };
 const createBaseIngredient = async (
   baseIng: baseIngType[],
-  client: any
+  client: any,
+  shopId: String
 ) => {
   // Start a transaction
   await client.query("BEGIN");
@@ -213,9 +219,9 @@ const createBaseIngredient = async (
             IF NOT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
-                AND table_name = 'base_ingredient'
+                AND table_name = '${shopId}_base_ingredient'
             ) THEN
-                CREATE TABLE base_ingredient (
+                CREATE TABLE ${shopId}_base_ingredient (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     qty VARCHAR(255) NOT NULL,
@@ -241,7 +247,7 @@ const createBaseIngredient = async (
     for (const ingredient of baseIng) {
       // Check if the ingredient already exists
       const exists = await client.query(
-        `SELECT id FROM base_ingredient WHERE name = $1 AND qty = $2 AND unit = $3`,
+        `SELECT id FROM ${shopId}_base_ingredient WHERE name = $1 AND qty = $2 AND unit = $3`,
         [
           ingredient.ing_name,
           ingredient.ing_qty.toString(),
@@ -270,7 +276,7 @@ const createBaseIngredient = async (
 
     // If there are ingredients to insert, execute the insert query
     if (insertQueries.length > 0) {
-      let queryString = `INSERT INTO base_ingredient (name, qty, unit, is_custom) VALUES ${insertQueries.join(",")} RETURNING id;`;
+      let queryString = `INSERT INTO ${shopId}_base_ingredient (name, qty, unit, is_custom) VALUES ${insertQueries.join(",")} RETURNING id;`;
       console.log('queryString', queryString);
       const result = await client.query(queryString, insertValues);
 
@@ -308,7 +314,8 @@ type customIngType = {
 };
 const createCustomIngredient = async (
   customIng: customIngType[],
-  client: any
+  client: any,
+  shopId: String
 ) => {
   // Start a transaction
   await client.query("BEGIN");
@@ -321,9 +328,9 @@ const createCustomIngredient = async (
             IF NOT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
-                AND table_name = 'custom_ingredient'
+                AND table_name = '${shopId}_custom_ingredient'
             ) THEN
-                CREATE TABLE custom_ingredient (
+                CREATE TABLE ${shopId}_custom_ingredient (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     qty VARCHAR(255) NOT NULL,
@@ -348,7 +355,7 @@ const createCustomIngredient = async (
     for (const ingredient of customIng) {
       // Check if the ingredient already exists
       const exists = await client.query(
-        `SELECT id FROM custom_ingredient WHERE name = $1 AND qty = $2 AND unit = $3 AND price = $4`,
+        `SELECT id FROM ${shopId}_custom_ingredient WHERE name = $1 AND qty = $2 AND unit = $3 AND price = $4`,
         [
           ingredient.ing_name,
           ingredient.ing_qty.toString(),
@@ -378,7 +385,7 @@ const createCustomIngredient = async (
 
     // If there are ingredients to insert, execute the insert query
     if (insertQueries.length > 0) {
-      let queryString = `INSERT INTO custom_ingredient (name, qty, unit, price) VALUES ${insertQueries.join(",")} RETURNING id;`;
+      let queryString = `INSERT INTO ${shopId}_custom_ingredient (name, qty, unit, price) VALUES ${insertQueries.join(",")} RETURNING id;`;
       // console.log('queryString',queryString);
       const result = await client.query(queryString, insertValues);
 
@@ -411,7 +418,8 @@ const createCustomIngredient = async (
 
 const createComboDessert = async (
   productData: z.infer<typeof ProductFormSchema>,
-  client: any
+  client: any,
+  shopId: string
 ) => {
 
   const { product_name, product_des, combo_desserts } = productData;
@@ -427,9 +435,9 @@ const createComboDessert = async (
           IF NOT EXISTS (
               SELECT FROM information_schema.tables 
               WHERE table_schema = 'public' 
-              AND table_name = 'combo_desserts'
+              AND table_name = '${shopId}_combo_desserts'
           ) THEN
-              CREATE TABLE combo_desserts (
+              CREATE TABLE ${shopId}_combo_desserts (
                   id SERIAL PRIMARY KEY,
                   name VARCHAR(255) NOT NULL,
                   description VARCHAR(255) NOT NULL,
@@ -450,7 +458,7 @@ const createComboDessert = async (
 
     // Construct the INSERT query
     const insertQuery = `
-    INSERT INTO combo_desserts (name, description, price)
+    INSERT INTO ${shopId}_combo_desserts (name, description, price)
     VALUES ($1, $2, $3)
     RETURNING id;
     `;
@@ -465,9 +473,9 @@ const createComboDessert = async (
             IF NOT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
-                AND table_name = 'combo_dessert_details'
+                AND table_name = '${shopId}_combo_dessert_details'
             ) THEN
-                CREATE TABLE combo_dessert_details (
+                CREATE TABLE ${shopId}_combo_dessert_details (
                     id SERIAL PRIMARY KEY,
                     combo_dessert_id INTEGER,
                     dessert_id INTEGER,
@@ -490,7 +498,7 @@ const createComboDessert = async (
 
           // Construct the INSERT query for the combo_dessert_details table
           const insertQueryDetails = `
-            INSERT INTO combo_dessert_details (combo_dessert_id, dessert_id, quantity)
+            INSERT INTO ${shopId}_combo_dessert_details (combo_dessert_id, dessert_id, quantity)
             VALUES ($1, $2, $3)
             RETURNING id;
           `;
@@ -519,7 +527,8 @@ const createComboDessert = async (
 
 const createComboDrinks = async (
   productData: z.infer<typeof ProductFormSchema>,
-  client: any
+  client: any,
+  shopId: String
 ) => {
 
   const { product_name, product_des, combo_drinks } = productData;
@@ -535,9 +544,9 @@ const createComboDrinks = async (
           IF NOT EXISTS (
               SELECT FROM information_schema.tables 
               WHERE table_schema = 'public' 
-              AND table_name = 'combo_drinks'
+              AND table_name = '${shopId}_combo_drinks'
           ) THEN
-              CREATE TABLE combo_drinks (
+              CREATE TABLE ${shopId}_combo_drinks (
                   id SERIAL PRIMARY KEY,
                   name VARCHAR(255) NOT NULL,
                   description VARCHAR(255) NOT NULL,
@@ -558,7 +567,7 @@ const createComboDrinks = async (
 
     // Construct the INSERT query
     const insertQuery = `
-    INSERT INTO combo_drinks (name, description, price)
+    INSERT INTO ${shopId}_combo_drinks (name, description, price)
     VALUES ($1, $2, $3)
     RETURNING id;
     `;
@@ -573,9 +582,9 @@ const createComboDrinks = async (
             IF NOT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
-                AND table_name = 'combo_drink_details'
+                AND table_name = '${shopId}_combo_drink_details'
             ) THEN
-                CREATE TABLE combo_drink_details (
+                CREATE TABLE ${shopId}_combo_drink_details (
                     id SERIAL PRIMARY KEY,
                     combo_drink_id INTEGER,
                     drink_id INTEGER,
@@ -598,7 +607,7 @@ const createComboDrinks = async (
 
           // Construct the INSERT query for the combo_drink_details table
           const insertQueryDetails = `
-            INSERT INTO combo_drink_details (combo_drink_id, drink_id, quantity)
+            INSERT INTO ${shopId}_combo_drink_details (combo_drink_id, drink_id, quantity)
             VALUES ($1, $2, $3)
             RETURNING id;
           `;
@@ -639,9 +648,10 @@ const postProduct = async (
       customIngIds: number[],
       comboDrinkId?: number,
       comboDessertId?: number
-    }
-  ,
-  client: any) => {
+    },
+  client: any,
+  shopId: String
+) => {
   // Start a transaction
 
   await client.query("BEGIN");
@@ -653,9 +663,9 @@ const postProduct = async (
             IF NOT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
-                AND table_name = 'products'
+                AND table_name = '${shopId}_products'
             ) THEN
-                CREATE TABLE products (
+                CREATE TABLE ${shopId}_products (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     img VARCHAR(255) NOT NULL,
@@ -677,7 +687,7 @@ const postProduct = async (
       `);
 
     const insertQuery = `
-        INSERT INTO products (name, img, description, price, category_id, type_id, dietType_id, baseIng_ids, customIng_ids, combo_drinks_id, combo_dessert_id)
+        INSERT INTO ${shopId}_products (name, img, description, price, category_id, type_id, dietType_id, baseIng_ids, customIng_ids, combo_drinks_id, combo_dessert_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING id;
       `;
@@ -764,7 +774,7 @@ export const getSingleProduct = async (product: any) => {
   }
 }
 
-export const getAllProduct = async () => {
+export const getAllProductByShopId = async (shopId: String) => {
   // let client = await db.connect();
   let client = await connectClientLocally();
 
@@ -780,13 +790,13 @@ export const getAllProduct = async () => {
         pt.name AS product_type,
         pdt.name AS diet_type
       FROM 
-        products p
+        ${shopId}_products p
       LEFT JOIN 
-        product_category pc ON p.category_id = pc.id
+        ${shopId}_product_category pc ON p.category_id = pc.id
       LEFT JOIN 
-        product_type pt ON p.type_id = pt.id
+        ${shopId}_product_type pt ON p.type_id = pt.id
       LEFT JOIN 
-        product_diet_type pdt ON p.diettype_id = pdt.id`
+        ${shopId}_product_diet_type pdt ON p.diettype_id = pdt.id`
     );
     // console.log(result.rows)
     let transformedResult = result.rows.map((row) => (
@@ -832,7 +842,7 @@ export const getAllProduct = async () => {
 
 
 
-export const getAllDrinks = async () => {
+export const getAllDrinksByShopId = async (shopId: String) => {
   // let client = await db.connect();
   let client = await connectClientLocally();
 
@@ -840,11 +850,11 @@ export const getAllDrinks = async () => {
     // SQL query to fetch drinks along with their base ingredients aggregated into a JSON array
     const query = `
       SELECT p.*, json_agg(bi)::text AS base_ingredient, pc.name AS product_type
-      FROM products p
-      JOIN product_type pt ON p.type_id = pt.id
-      JOIN product_category pc ON p.category_id = pc.id
+      FROM ${shopId}_products p
+      JOIN ${shopId}_product_type pt ON p.type_id = pt.id
+      JOIN ${shopId}_product_category pc ON p.category_id = pc.id
       LEFT JOIN LATERAL unnest(p.baseIng_ids) AS bi_id ON TRUE
-      LEFT JOIN base_ingredient bi ON bi.id = bi_id
+      LEFT JOIN ${shopId}_base_ingredient bi ON bi.id = bi_id
       WHERE pt.name = 'drinks' AND p.combo_drinks_id IS NULL
       GROUP BY p.id, pc.name;
     `;
@@ -895,7 +905,7 @@ export const getAllDrinks = async () => {
 }
 
 
-export const getAllDesserts = async () => {
+export const getAllDessertsByShopId = async (shopId: String) => {
   // let client = await db.connect();
   let client = await connectClientLocally();
 
@@ -903,11 +913,11 @@ export const getAllDesserts = async () => {
     // SQL query to fetch drinks along with their base ingredients aggregated into a JSON array
     const query = `
       SELECT p.*, json_agg(bi)::text AS base_ingredient, pc.name AS product_type
-      FROM products p
-      JOIN product_type pt ON p.type_id = pt.id
-      JOIN product_category pc ON p.category_id = pc.id
+      FROM ${shopId}_products p
+      JOIN ${shopId}_product_type pt ON p.type_id = pt.id
+      JOIN ${shopId}_product_category pc ON p.category_id = pc.id
       LEFT JOIN LATERAL unnest(p.baseIng_ids) AS bi_id ON TRUE
-      LEFT JOIN base_ingredient bi ON bi.id = bi_id
+      LEFT JOIN ${shopId}_base_ingredient bi ON bi.id = bi_id
       WHERE pt.name = 'dessert' AND p.combo_dessert_id IS NULL
       GROUP BY p.id, pc.name;
     `;
@@ -957,7 +967,7 @@ export const getAllDesserts = async () => {
 }
 
 
-const getBaseIngredientByIds = async (ids: Array<number>) => {
+const getBaseIngredientFromShopIdByIds = async (ids: Array<number>, shopId: String) => {
   // if(ids.length>0){
   // let client = await db.connect();
   let client = await connectClientLocally();
@@ -969,7 +979,7 @@ const getBaseIngredientByIds = async (ids: Array<number>) => {
   try {
     // Prepare the parameterized query
     const query = `
-          SELECT * FROM base_ingredient
+          SELECT * FROM ${shopId}_base_ingredient
           WHERE id = ANY($1)
         `;
 
@@ -1012,7 +1022,7 @@ const getBaseIngredientByIds = async (ids: Array<number>) => {
   //   message: "empty request data"
   // };
 }
-const getCustomIngredientByIds = async (ids: Array<number>) => {
+const getCustomIngredientFromShopIdByIds = async (ids: Array<number>, shopId: String) => {
   // if(ids.length>0){
   // let client = await db.connect();
   let client = await connectClientLocally();
@@ -1023,7 +1033,7 @@ const getCustomIngredientByIds = async (ids: Array<number>) => {
   try {
     // Prepare the parameterized query
     const query = `
-          SELECT * FROM custom_ingredient
+          SELECT * FROM ${shopId}_custom_ingredient
           WHERE id = ANY($1)
         `;
 
@@ -1067,7 +1077,7 @@ const getCustomIngredientByIds = async (ids: Array<number>) => {
   //   message: "empty request data"
   // };
 }
-const getComboDrinksById = async (id: number) => {
+const getComboDrinksFromShopIdById = async (id: number, shopId: String) => {
   // if(id){
   // let client = await db.connect();
   let client = await connectClientLocally();
@@ -1082,17 +1092,17 @@ const getComboDrinksById = async (id: number) => {
             pdt.name AS diet_type_name,
             (SELECT json_agg(bi) FROM base_ingredient bi WHERE bi.id = ANY(p.baseing_ids)) AS base_ingredient
         FROM 
-            combo_drinks cd
+            ${shopId}_combo_drinks cd
         JOIN 
-            combo_drink_details cdd ON cd.id = cdd.combo_drink_id
+            ${shopId}_combo_drink_details cdd ON cd.id = cdd.combo_drink_id
         JOIN 
-            products p ON cdd.drink_id = p.id
+            ${shopId}_products p ON cdd.drink_id = p.id
         LEFT JOIN 
-            product_category pc ON p.category_id = pc.id
+            ${shopId}_product_category pc ON p.category_id = pc.id
         LEFT JOIN 
-            product_type pt ON p.type_id = pt.id
+            ${shopId}_product_type pt ON p.type_id = pt.id
         LEFT JOIN 
-            product_diet_type pdt ON p.diettype_id = pdt.id
+            ${shopId}_product_diet_type pdt ON p.diettype_id = pdt.id
         WHERE 
             cd.id = $1
     `;
@@ -1139,7 +1149,7 @@ const getComboDrinksById = async (id: number) => {
   //   message: "empty request data"
   // };
 }
-const getComboDessertsById = async (id: number) => {
+const getComboDessertsFromShopIdById = async (id: number, shopId: String) => {
   console.log("dessertid", id)
   // let client = await db.connect();
   let client = await connectClientLocally();
@@ -1152,19 +1162,19 @@ const getComboDessertsById = async (id: number) => {
           pc.name AS category_name,
           pt.name AS type_name,
           pdt.name AS diet_type_name,
-          (SELECT json_agg(bi) FROM base_ingredient bi WHERE bi.id = ANY(p.baseing_ids)) AS base_ingredient
+          (SELECT json_agg(bi) FROM ${shopId}_base_ingredient bi WHERE bi.id = ANY(p.baseing_ids)) AS base_ingredient
         FROM 
-          combo_desserts cd
+          ${shopId}_combo_desserts cd
         JOIN 
-          combo_dessert_details cdd ON cd.id = cdd.combo_dessert_id
+          ${shopId}_combo_dessert_details cdd ON cd.id = cdd.combo_dessert_id
         JOIN 
-          products p ON cdd.dessert_id = p.id
+          ${shopId}_products p ON cdd.dessert_id = p.id
         LEFT JOIN 
-          product_category pc ON p.category_id = pc.id
+          ${shopId}_product_category pc ON p.category_id = pc.id
         LEFT JOIN 
-          product_type pt ON p.type_id = pt.id
+          ${shopId}_product_type pt ON p.type_id = pt.id
         LEFT JOIN 
-          product_diet_type pdt ON p.diettype_id = pdt.id
+          ${shopId}_product_diet_type pdt ON p.diettype_id = pdt.id
         WHERE 
           cd.id = $1
       `;
@@ -1212,7 +1222,7 @@ const getComboDessertsById = async (id: number) => {
 
 
 //...........update............
-const updateOrInsertBaseIngredient = async (productId: any, ingredients: any[], client: any) => {
+const updateOrInsertBaseIngredientByShopId = async (productId: any, ingredients: any[], client: any, shopId: String) => {
   try {
     // Start a transaction
     await client.query('BEGIN');
@@ -1223,7 +1233,7 @@ const updateOrInsertBaseIngredient = async (productId: any, ingredients: any[], 
     try {
       // Fetch all base ingredient IDs from the product table
       const productIngredientIdsResult = await client.query(
-        `SELECT baseing_ids FROM products where id = ${productId}`
+        `SELECT baseing_ids FROM ${shopId}_products where id = ${productId}`
       );
       const productIngredientIds = productIngredientIdsResult.rows[0].baseing_ids;
 
@@ -1234,7 +1244,7 @@ const updateOrInsertBaseIngredient = async (productId: any, ingredients: any[], 
       // Remove unmatched ingredients from the base_ingredient table
       for (const id of unmatchedIngIds) {
         await client.query(
-          `DELETE FROM base_ingredient WHERE id = $1`,
+          `DELETE FROM ${shopId}_base_ingredient WHERE id = $1`,
           [id]
         );
       }
@@ -1247,20 +1257,20 @@ const updateOrInsertBaseIngredient = async (productId: any, ingredients: any[], 
 
         // Check if the ingredient exists
         const exists = await client.query(
-          `SELECT id FROM base_ingredient WHERE id = $1`,
+          `SELECT id FROM ${shopId}_base_ingredient WHERE id = $1`,
           [ing_id]
         );
 
         if (exists.rows.length > 0) {
           // If the ingredient exists, update it
           await client.query(
-            `UPDATE base_ingredient SET name = $1, qty = $2, unit = $3, is_custom = $4 WHERE id = $5`,
+            `UPDATE ${shopId}_base_ingredient SET name = $1, qty = $2, unit = $3, is_custom = $4 WHERE id = $5`,
             [ing_name, ing_qty, ing_unit, custom_marker, ing_id]
           );
         } else {
           // If the ingredient does not exist, insert it
           const insertResult = await client.query(
-            `INSERT INTO base_ingredient (name, qty, unit, is_custom) VALUES ($1, $2, $3, $4) RETURNING id`,
+            `INSERT INTO ${shopId}_base_ingredient (name, qty, unit, is_custom) VALUES ($1, $2, $3, $4) RETURNING id`,
             [ing_name, ing_qty, ing_unit, custom_marker]
           );
           // Push the new ingredient ID into the array
@@ -1269,7 +1279,7 @@ const updateOrInsertBaseIngredient = async (productId: any, ingredients: any[], 
       }
       // Fetch the updated list of ingredient IDs for the product
       const updatedIngredientIdsResult = await client.query(
-        `SELECT baseing_ids FROM products WHERE id = $1`,
+        `SELECT baseing_ids FROM ${shopId}_products WHERE id = $1`,
         [productId]
       );
       // Commit the transaction
@@ -1290,7 +1300,7 @@ const updateOrInsertBaseIngredient = async (productId: any, ingredients: any[], 
   }
 };
 
-const updateOrInsertCustomIngredient = async (productId: any, ingredients: any[], client: any) => {
+const updateOrInsertCustomIngredientByShopId = async (productId: any, ingredients: any[], client: any, shopId: String) => {
   try {
     // Start a transaction
     await client.query('BEGIN');
@@ -1301,7 +1311,7 @@ const updateOrInsertCustomIngredient = async (productId: any, ingredients: any[]
     try {
       // Fetch all custom ingredient IDs from the product table
       const productIngredientIdsResult = await client.query(
-        `SELECT customing_ids FROM products WHERE id = ${productId}`
+        `SELECT customing_ids FROM ${shopId}_products WHERE id = ${productId}`
       );
 
       const productIngredientIds = productIngredientIdsResult.rows[0].customing_ids;
@@ -1313,7 +1323,7 @@ const updateOrInsertCustomIngredient = async (productId: any, ingredients: any[]
       // Remove unmatched ingredients from the custom_ingredient table
       for (const id of unmatchedIngIds) {
         await client.query(
-          `DELETE FROM custom_ingredient WHERE id = $1`,
+          `DELETE FROM ${shopId}_custom_ingredient WHERE id = $1`,
           [id]
         );
       }
@@ -1326,7 +1336,7 @@ const updateOrInsertCustomIngredient = async (productId: any, ingredients: any[]
 
         // Check if the ingredient exists
         const exists = await client.query(
-          `SELECT id FROM custom_ingredient WHERE id = $1`,
+          `SELECT id FROM ${shopId}_custom_ingredient WHERE id = $1`,
           [ing_id]
         );
 
@@ -1334,14 +1344,14 @@ const updateOrInsertCustomIngredient = async (productId: any, ingredients: any[]
           // If the ingredient exists, update it
           //  console.log("ingid",ing_id)
           await client.query(
-            `UPDATE custom_ingredient SET name = $1, qty = $2, unit = $3, price = $4 WHERE id = $5`,
+            `UPDATE ${shopId}_custom_ingredient SET name = $1, qty = $2, unit = $3, price = $4 WHERE id = $5`,
             [ing_name, ing_qty, ing_unit, ing_price, ing_id]
           );
         } else {
           // If the ingredient does not exist, insert it
 
           const insertResult = await client.query(
-            `INSERT INTO custom_ingredient (name, qty, unit, price) VALUES ($1, $2, $3, $4) Returning id`,
+            `INSERT INTO ${shopId}_custom_ingredient (name, qty, unit, price) VALUES ($1, $2, $3, $4) Returning id`,
             [ing_name, ing_qty, ing_unit, ing_price]
           );
 
@@ -1355,7 +1365,7 @@ const updateOrInsertCustomIngredient = async (productId: any, ingredients: any[]
 
       // Fetch the updated list of ingredient IDs for the product
       const updatedIngredientIdsResult = await client.query(
-        `SELECT customing_ids FROM products WHERE id = $1`,
+        `SELECT customing_ids FROM ${shopId}_products WHERE id = $1`,
         [productId]
       );
 
@@ -1375,7 +1385,7 @@ const updateOrInsertCustomIngredient = async (productId: any, ingredients: any[]
 };
 
 
-const updateOrInsertComboDrinks = async (comboDrinks: any[], comboDrinksId: number, client: any) => {
+const updateOrInsertComboDrinksByShopId = async (comboDrinks: any[], comboDrinksId: number, client: any, shopId:String) => {
   try {
     // Start a transaction
     await client.query('BEGIN');
@@ -1383,7 +1393,7 @@ const updateOrInsertComboDrinks = async (comboDrinks: any[], comboDrinksId: numb
     try {
       // Fetch all drink IDs from the combo_drink_details table for the specified combo drink
       const comboDrinkDetailsResult = await client.query(
-        `SELECT drink_id FROM combo_drink_details WHERE combo_drink_id = $1`,
+        `SELECT drink_id FROM ${shopId}_combo_drink_details WHERE combo_drink_id = $1`,
         [comboDrinksId]
       );
       const comboDrinkDetailsIds = comboDrinkDetailsResult.rows.map((row: any) => row.drink_id);
@@ -1395,7 +1405,7 @@ const updateOrInsertComboDrinks = async (comboDrinks: any[], comboDrinksId: numb
       // Remove unmatched drinks from the combo_drink_details table
       for (const id of unmatchedDrinkIds) {
         await client.query(
-          `DELETE FROM combo_drink_details WHERE combo_drink_id = $1 AND drink_id = $2`,
+          `DELETE FROM ${shopId}_combo_drink_details WHERE combo_drink_id = $1 AND drink_id = $2`,
           [comboDrinksId, id]
         );
       }
@@ -1412,14 +1422,14 @@ const updateOrInsertComboDrinks = async (comboDrinks: any[], comboDrinksId: numb
 
         // Check if the combo drink exists
         const exists = await client.query(
-          `SELECT id FROM combo_drink_details WHERE combo_drink_id = $1 AND drink_id = $2`,
+          `SELECT id FROM ${shopId}_combo_drink_details WHERE combo_drink_id = $1 AND drink_id = $2`,
           [comboDrinksId, id]
         );
 
         if (exists.rows.length > 0) {
           // If the combo drink exists, update it
           await client.query(
-            `UPDATE combo_drink_details SET quantity = $1, WHERE combo_drink_id = $2 AND drink_id = $3`,
+            `UPDATE ${shopId}_combo_drink_details SET quantity = $1, WHERE combo_drink_id = $2 AND drink_id = $3`,
             [comboDrink.total_qty, comboDrinksId, id]
           );
         } else {

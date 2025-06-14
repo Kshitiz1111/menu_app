@@ -43,7 +43,7 @@ export const saveOrders = async (order: any) => {
     );
     if (checkOrderExists.rows.length > 0) {
       console.error("Order with this purchase_order_id already exists.");
-      client.release();
+      // client.release();
       return { success: false, message: "Order with this purchase_order_id already exists." };
     }
 
@@ -91,13 +91,13 @@ export const saveOrders = async (order: any) => {
 
     await client.query("COMMIT");
     console.log("Order and details successfully inserted.");
-    client.release();
+    // client.release();
     return { success: true, message: "Order and details successfully inserted." };
   } catch (error: any) {
     console.error("Error occurred:", error);
     if (client) {
       await client.query("ROLLBACK");
-      client.release();
+      // client.release();
     }
     return { success: false, message: error.message };
   }

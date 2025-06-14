@@ -2,10 +2,11 @@
 // import pool from "@/lib/database/db";
 import { db } from '@vercel/postgres';
 import { connectMainLocally } from '../database/localmaindb';
+import { connectClientLocally } from '../database/localdb';
 
 export const getRestaurantData = async (rid: string) => {
   //  let rclient = await db.connect();
-  let rclient = await connectMainLocally();
+  let rclient = await connectClientLocally();
   try {
     await rclient.query("BEGIN")
     const restaurantData = await rclient.query(`

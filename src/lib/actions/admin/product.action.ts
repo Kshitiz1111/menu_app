@@ -124,7 +124,7 @@ export const createProductByRestaurant = async (
   } catch (error) {
     console.log("error");
   } finally {
-    client.release();
+    // client.release();
   }
 };
 
@@ -819,7 +819,7 @@ export const getAllProductByRestaurant = async (restaurant_id: string) => {
     ))
     // Commit the transaction
     await client.query("COMMIT");
-    client.release();
+    // client.release();
     // Return the fetched products
     return {
       success: true,
@@ -833,7 +833,7 @@ export const getAllProductByRestaurant = async (restaurant_id: string) => {
 
     // Log the error and return an error message
     console.error("Error fetching products:", error);
-    client.release();
+    // client.release();
     return {
       success: false,
       message: "Error fetching products: " + error.message,
@@ -886,7 +886,7 @@ export const getAllDrinksByRestaurant = async (restaurant_id: string) => {
       })
     });
 
-    client.release();
+    // client.release();
     // Return the fetched drinks with their base ingredients
     return {
       success: true,
@@ -896,7 +896,7 @@ export const getAllDrinksByRestaurant = async (restaurant_id: string) => {
   } catch (error: any) {
     // Handle any errors
     console.error("Error fetching drinks with base ingredients:", error);
-    client.release();
+    // client.release();
     return {
       success: false,
       message: "Error fetching drinks with base ingredients: " + error.message,
@@ -987,7 +987,7 @@ const getBaseIngredientByIds = async (ids: Array<number>, restaurant_id: string)
 
     // Commit the transaction
     await client.query("COMMIT");
-    client.release();
+    // client.release();
     // Return the fetched base ingredients
     const transformedIngredients = result.rows.map(ing => ({
       ing_id: ing.id,
@@ -1007,7 +1007,7 @@ const getBaseIngredientByIds = async (ids: Array<number>, restaurant_id: string)
   } catch (error: any) {
     // Rollback the transaction in case of error
     await client.query("ROLLBACK");
-    client.release();
+    // client.release();
     // Log the error and return an error message
     console.error("Error fetching base ingredients:", error);
     return {
@@ -1041,7 +1041,7 @@ const getCustomIngredientByIds = async (ids: Array<number>, restaurant_id: strin
 
     // Commit the transaction
     await client.query("COMMIT");
-    client.release();
+    // client.release();
     // Return the fetched base ingredients
     // Transform the result to match the expected structure
     const transformedIngredients = result.rows.map(ing => ({
@@ -1062,7 +1062,7 @@ const getCustomIngredientByIds = async (ids: Array<number>, restaurant_id: strin
   } catch (error: any) {
     // Rollback the transaction in case of error
     await client.query("ROLLBACK");
-    client.release();
+    // client.release();
     // Log the error and return an error message
     console.error("Error fetching custom ingredients:", error);
     return {
@@ -1108,7 +1108,7 @@ const getComboDrinksById = async (id: number, restaurant_id: string) => {
 
   try {
     const result = await client.query(query, [id]);
-    client.release();
+    // client.release();
     // Transform the result to match the Zod schema
     console.log("comdrinks", result.rows)
     const transformedResult = result.rows.map(row => ({
@@ -1136,7 +1136,7 @@ const getComboDrinksById = async (id: number, restaurant_id: string) => {
       combo_drinks: transformedResult,
     };
   } catch (error: any) {
-    client.release();
+    // client.release();
     console.error('Error fetching combo drink details:', error);
     return {
       success: false,
@@ -1180,7 +1180,7 @@ const getComboDessertsById = async (id: number, restaurant_id: string) => {
 
   try {
     const result = await client.query(query, [id]);
-    client.release();
+    // client.release();
 
     // Transform the result to match the Zod schema
     console.log('asdfasd', result.rows)
@@ -1210,7 +1210,7 @@ const getComboDessertsById = async (id: number, restaurant_id: string) => {
       combo_desserts: transformedResult,
     };
   } catch (error: any) {
-    client.release();
+    // client.release();
     console.error('Error fetching combo dessert details:', error);
     return {
       success: false,
@@ -1578,18 +1578,18 @@ export const updateProductByRestaurant = async (product: any, restaurant_id: str
 
       // Commit the transaction
       await client.query('COMMIT');
-      client.release();
+      // client.release();
       return { success: true }
     } catch (error) {
       // Rollback the transaction in case of any error
 
       await client.query('ROLLBACK');
-      client.release();
+      // client.release();
       throw error; // Rethrow the error to be handled by the caller
 
     }
   } catch (error) {
-    client.release();
+    // client.release();
     console.error('Error updating product:', error);
     throw error; // Rethrow the error to be handled by the caller
   }
@@ -1676,12 +1676,12 @@ export const deleteProductByRestaurant = async (productId: string, restaurant_id
     await client.query(`DELETE FROM ${restaurant_id}_products WHERE id = $1`, [Number(productId)]);
 
     await client.query('COMMIT');
-    client.release();
+    // client.release();
     console.log(`Product with ID ${productId} has been deleted.`);
     return { success: true, message: `Product with ID ${productId} has been deleted.` }
   } catch (error) {
     await client.query('ROLLBACK');
-    client.release();
+    // client.release();
     console.error('Error deleting product:', error);
     throw error; // Rethrow the error to be handled by the caller
   }

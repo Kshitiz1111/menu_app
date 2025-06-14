@@ -1,14 +1,11 @@
 'use client'
-import CartItem from "@/components/custom/CartItem"
-import DishCard from "@/components/custom/DishCard"
-import { Button } from "@/components/ui/button"
-import { useSearchParams } from 'next/navigation'
-import { useOrderContext } from '@/context/orderContext'
-import type { orderContextType } from "@/context/orderContext"
-import { useEffect, useRef, useState } from "react"
-import { paymentVerificationLookup } from "@/lib/actions/payment.action"
-import { OrderType } from "@/types/orders"
-import { getRestaurantId } from "@/lib/placeHolderData"
+import CustomerNav from "@/components/custom/CustomerNav";
+import DishCard from "@/components/custom/DishCard";
+import { orderContextType, useOrderContext } from "@/context/orderContext";
+import { paymentVerificationLookup } from "@/lib/actions/payment.action";
+import { getRestaurantId, setRestaurantId } from "@/lib/placeHolderData";
+import { useParams, useSearchParams } from "next/navigation"
+import { useEffect, useRef, useState } from "react";
 
 interface TransactionDetails {
   pidx: string;
@@ -24,16 +21,17 @@ interface TransactionDetails {
   username: string;
   extra: string;
 }
+
 interface toastInfoType {
   title: string;
   description: string;
   status: boolean;
 }
 
-
-
-const CustomerPage = () => {
-  const restaurant_id = getRestaurantId()
+const DynamicShop = () => {
+  const params = useParams();
+  if (params === null) return <div>invalid route</div>
+  const restaurant_id: string = params.slug as string;
   // Create a ref to track if the effect has run
   const hasRun = useRef(false);
 
@@ -231,8 +229,9 @@ const CustomerPage = () => {
   const { orders, setOrders } = context as orderContextType;
 
 
+  console.log("router.query.slug", restaurant_id)
   return (
-    <div className="p-2">
+    <div>
       {
         toastInfo &&
         <div className={`max-w-xs fixed bottom-4 border border-black right-4 bg-white text-black p-2 rounded-lg shadow-md flex gap-1 items-center justify-between ${toastInfo.status ? '' : 'border-red-500'}`}>
@@ -245,9 +244,8 @@ const CustomerPage = () => {
           </button>
         </div>
       }
-      <DishCard restaurant_id="r01" />
+      <DishCard restaurant_id={restaurant_id} />
     </div>
   )
 }
-
-export default CustomerPage
+export default DynamicShop
